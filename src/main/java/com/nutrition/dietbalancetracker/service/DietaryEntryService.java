@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * DIETARY ENTRY SERVICE
@@ -29,12 +30,15 @@ public class DietaryEntryService {
     // Log a meal
     @Transactional
     public DietaryEntry logMeal(Long userId, DietaryEntryDTO dto) {
+        Long safeUserId = Objects.requireNonNull(userId, "User ID is required");
+        Long foodItemId = Objects.requireNonNull(dto.getFoodItemId(), "Food item ID is required");
+
         // Find user
-        User user = userRepository.findById(userId)
+        User user = userRepository.findById(safeUserId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
         // Find food item
-        FoodItem foodItem = foodItemRepository.findById(dto.getFoodItemId())
+        FoodItem foodItem = foodItemRepository.findById(foodItemId)
                 .orElseThrow(() -> new RuntimeException("Food item not found"));
         
         // Create entry
