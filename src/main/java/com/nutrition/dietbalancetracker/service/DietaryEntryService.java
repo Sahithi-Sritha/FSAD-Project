@@ -1,5 +1,12 @@
 package com.nutrition.dietbalancetracker.service;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Objects;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.nutrition.dietbalancetracker.dto.DietaryEntryDTO;
 import com.nutrition.dietbalancetracker.model.DietaryEntry;
 import com.nutrition.dietbalancetracker.model.FoodItem;
@@ -7,12 +14,8 @@ import com.nutrition.dietbalancetracker.model.User;
 import com.nutrition.dietbalancetracker.repository.DietaryEntryRepository;
 import com.nutrition.dietbalancetracker.repository.FoodItemRepository;
 import com.nutrition.dietbalancetracker.repository.UserRepository;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Objects;
 
 /**
  * DIETARY ENTRY SERVICE
