@@ -81,7 +81,7 @@ public enum AgeGroup {
      * - Skipping meals
      * - Preferring snacks over meals
      */
-    AGE_4_8,
+    AGE_9_13,
     
     /**
      * AGE_9_13
@@ -119,8 +119,7 @@ public enum AgeGroup {
      * - Not drinking enough milk
      * - Irregular meal times
      */
-    AGE_9_13,
-    
+
     /**
      * AGE_14_18
      * ---------
