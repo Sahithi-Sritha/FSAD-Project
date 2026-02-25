@@ -33,15 +33,9 @@ function MealHistory({ user, onLogout }) {
     }
   }
 
-  const formatDate = (dateString) => {
+  const formatTime = (dateString) => {
     const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
   // Group meals by date
@@ -54,65 +48,79 @@ function MealHistory({ user, onLogout }) {
 
   return (
     <Layout user={user} onLogout={onLogout}>
-      <h2 style={{ marginBottom: '2rem', color: '#1f2937' }}>Meal History 📋</h2>
+      <Link to="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: 'var(--color-text-muted)', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.5rem' }}>
+        ← Back to Dashboard
+      </Link>
+
+      <div className="page-header">
+        <h1>Meal History</h1>
+        <p>View all your logged meals</p>
+      </div>
 
       <div className="card">
+        <div className="card-header">
+          <div>
+            <div className="card-title">All Meals</div>
+            <div className="card-subtitle">{meals.length} meal{meals.length !== 1 ? 's' : ''} logged</div>
+          </div>
+        </div>
+
         {loading ? (
           <div className="loading">Loading your meal history...</div>
         ) : meals.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
+          <div className="empty-state">
+            <div className="empty-state-icon">📋</div>
             <p>No meals logged yet</p>
             <Link to="/log-food">
-              <button className="btn btn-primary" style={{ marginTop: '1rem' }}>
-                Log Your First Meal
-              </button>
+              <button className="btn btn-primary">Log Your First Meal</button>
             </Link>
           </div>
         ) : (
           Object.entries(groupedMeals).map(([date, dateMeals]) => (
-            <div key={date} style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ color: '#667eea', marginBottom: '0.75rem', borderBottom: '2px solid #e5e7eb', paddingBottom: '0.5rem' }}>
+            <div key={date} className="date-section">
+              <div className="date-section-title">
                 {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-              </h3>
+              </div>
               <div className="meal-list">
-                {dateMeals.map((meal) => (
-                  <div key={meal.id} className="meal-item">
-                    <div className="meal-header">
-                      <span className="meal-name">{meal.foodItem?.name}</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <span className="meal-time">{formatDate(meal.consumedAt)}</span>
-                        <button 
-                          onClick={() => handleDelete(meal.id)} 
-                          className="btn-delete"
-                          title="Delete entry"
-                        >
-                          ✕
-                        </button>
+                {dateMeals.map((meal) => {
+                  const mealType = (meal.mealType || '').toLowerCase()
+                  const kcal = Math.round((meal.foodItem?.nutrientProfile?.calories || 0) * meal.portionSize)
+                  const np = meal.foodItem?.nutrientProfile
+                  return (
+                    <div key={meal.id} className="meal-item">
+                      <div className="meal-left">
+                        <div className={`meal-color-dot ${mealType}`} />
+                        <div>
+                          <div className="meal-name">{meal.foodItem?.name}</div>
+                          <div className="meal-meta">
+                            <span className={`meal-badge ${mealType}`}>{meal.mealType}</span>
+                            <span>{meal.portionSize} serving{meal.portionSize !== 1 ? 's' : ''}</span>
+                            {np && (
+                              <span>
+                                P: {(np.protein * meal.portionSize).toFixed(1)}g · 
+                                C: {(np.carbohydrates * meal.portionSize).toFixed(1)}g · 
+                                F: {(np.fat * meal.portionSize).toFixed(1)}g
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="meal-right">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span className="meal-calories">{kcal} kcal</span>
+                          <button 
+                            onClick={() => handleDelete(meal.id)} 
+                            className="btn-delete"
+                            title="Delete entry"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <span className="meal-time">{formatTime(meal.consumedAt)}</span>
                       </div>
                     </div>
-                    <div className="meal-details">
-                      <span style={{ 
-                        background: '#667eea', 
-                        color: 'white', 
-                        padding: '0.25rem 0.5rem', 
-                        borderRadius: '4px',
-                        fontSize: '0.75rem',
-                        marginRight: '0.5rem'
-                      }}>
-                        {meal.mealType}
-                      </span>
-                      {meal.portionSize} serving(s) • 
-                      {Math.round((meal.foodItem?.nutrientProfile?.calories || 0) * meal.portionSize)} kcal
-                      {meal.foodItem?.nutrientProfile && (
-                        <span style={{ marginLeft: '0.5rem', color: '#9ca3af' }}>
-                          (P: {(meal.foodItem.nutrientProfile.protein * meal.portionSize).toFixed(1)}g • 
-                          C: {(meal.foodItem.nutrientProfile.carbohydrates * meal.portionSize).toFixed(1)}g • 
-                          F: {(meal.foodItem.nutrientProfile.fat * meal.portionSize).toFixed(1)}g)
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           ))

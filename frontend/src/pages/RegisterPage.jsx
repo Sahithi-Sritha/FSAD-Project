@@ -39,78 +39,88 @@ function RegisterPage({ onRegister }) {
   }
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <div className="auth-header">
-          <h1>🥗 Diet Balance Tracker</h1>
-          <p>Track your nutrition, stay healthy!</p>
+    <div className="auth-page">
+      {/* Left branding panel */}
+      <div className="auth-side">
+        <div className="auth-side-content">
+          <div className="auth-side-logo">🌿</div>
+          <h1>Diet Balance Tracker</h1>
+          <p>Join thousands of users who track their nutrition and live healthier every day.</p>
         </div>
+      </div>
 
-        <form onSubmit={handleSubmit} className="auth-form">
-          <h2>Create Account</h2>
+      {/* Right form panel */}
+      <div className="auth-form-panel">
+        <div className="auth-form-container">
+          <h2>Create your account</h2>
+          <p>Start your nutrition journey today</p>
 
           {error && <div className="error">{error}</div>}
 
-          <div className="form-group">
-            <label>Username</label>
-            <input
-              type="text"
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-              required
-              minLength="3"
-              placeholder="Choose a username"
-            />
-          </div>
+          <form onSubmit={handleSubmit} className="auth-form">
+            <div className="form-group">
+              <label>Username</label>
+              <input
+                type="text"
+                name="username"
+                value={formData.username}
+                onChange={handleChange}
+                required
+                minLength="3"
+                placeholder="Choose a username"
+              />
+            </div>
 
-          <div className="form-group">
-            <label>Email</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              placeholder="your@email.com"
-            />
-          </div>
+            <div className="form-group">
+              <label>Email</label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                placeholder="your@email.com"
+              />
+            </div>
 
-          <div className="form-group">
-            <label>Password</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              minLength="6"
-              placeholder="At least 6 characters"
-            />
-          </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Password</label>
+                <input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                  minLength="6"
+                  placeholder="Min 6 characters"
+                />
+              </div>
 
-          <div className="form-group">
-            <label>Age</label>
-            <input
-              type="number"
-              name="age"
-              value={formData.age}
-              onChange={handleChange}
-              required
-              min="1"
-              max="120"
-              placeholder="Your age"
-            />
-          </div>
+              <div className="form-group">
+                <label>Age</label>
+                <input
+                  type="number"
+                  name="age"
+                  value={formData.age}
+                  onChange={handleChange}
+                  required
+                  min="1"
+                  max="120"
+                  placeholder="Your age"
+                />
+              </div>
+            </div>
 
-          <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? 'Creating account...' : 'Register'}
-          </button>
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? 'Creating account...' : 'Create Account'}
+            </button>
 
-          <p className="auth-link">
-            Already have an account? <Link to="/login">Login here</Link>
-          </p>
-        </form>
+            <p className="auth-link">
+              Already have an account? <Link to="/login">Sign in</Link>
+            </p>
+          </form>
+        </div>
       </div>
     </div>
   )

@@ -24,9 +24,9 @@ function NutritionAnalysis({ user, onLogout }) {
   }
 
   const getNutrientColor = (percentage) => {
-    if (percentage >= 80) return '#10b981'  // green — good
-    if (percentage >= 50) return '#f59e0b'  // amber — moderate
-    return '#ef4444'                         // red — deficient
+    if (percentage >= 80) return 'var(--color-success)'
+    if (percentage >= 50) return 'var(--color-warning)'
+    return 'var(--color-danger)'
   }
 
   const getNutrientStatus = (percentage) => {
@@ -38,18 +38,19 @@ function NutritionAnalysis({ user, onLogout }) {
 
   return (
     <Layout user={user} onLogout={onLogout}>
-      <h2 style={{ marginBottom: '1rem', color: '#1f2937' }}>Nutrition Analysis 📊</h2>
-
-      <div style={{ marginBottom: '1.5rem' }}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h1>Nutrition Analysis</h1>
+          <p>Detailed breakdown of your nutrient intake</p>
+        </div>
         <div className="period-selector">
           {['today', 'week'].map(p => (
             <button
               key={p}
-              className={`btn ${period === p ? 'btn-primary' : 'btn-outline'}`}
+              className={`period-btn ${period === p ? 'active' : ''}`}
               onClick={() => setPeriod(p)}
-              style={{ marginRight: '0.5rem' }}
             >
-              {p === 'today' ? "Today" : "This Week"}
+              {p === 'today' ? 'Today' : 'This Week'}
             </button>
           ))}
         </div>
@@ -58,41 +59,58 @@ function NutritionAnalysis({ user, onLogout }) {
       {loading ? (
         <div className="loading">Loading analysis...</div>
       ) : !analysis ? (
-        <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
-          <p style={{ color: '#6b7280', fontSize: '1.1rem' }}>
-            No meals logged for this period. Start logging meals to see your nutrition analysis!
-          </p>
+        <div className="card">
+          <div className="empty-state">
+            <div className="empty-state-icon">📊</div>
+            <p>No meals logged for this period. Start logging meals to see your nutrition analysis!</p>
+          </div>
         </div>
       ) : (
         <>
-          {/* Summary Cards */}
+          {/* Summary stat cards */}
           <div className="stats-grid">
             <div className="stat-card">
-              <div className="stat-label">Total Calories</div>
-              <div className="stat-value" style={{ color: '#667eea' }}>
-                {Math.round(analysis.totalCalories)}
+              <div className="stat-card-row">
+                <div>
+                  <div className="stat-label">Total Calories</div>
+                  <div className="stat-value">{Math.round(analysis.totalCalories)}</div>
+                  <div className="stat-meta">kcal</div>
+                </div>
+                <div className="stat-icon teal">🔥</div>
               </div>
-              <div className="stat-label">kcal</div>
             </div>
             <div className="stat-card">
-              <div className="stat-label">Meals Logged</div>
-              <div className="stat-value" style={{ color: '#10b981' }}>
-                {analysis.mealCount}
+              <div className="stat-card-row">
+                <div>
+                  <div className="stat-label">Meals Logged</div>
+                  <div className="stat-value">{analysis.mealCount}</div>
+                  <div className="stat-meta">{period === 'today' ? 'today' : 'this week'}</div>
+                </div>
+                <div className="stat-icon green">🍽️</div>
               </div>
-              <div className="stat-label">{period === 'today' ? 'today' : 'this week'}</div>
             </div>
             <div className="stat-card">
-              <div className="stat-label">Nutrient Score</div>
-              <div className="stat-value" style={{ color: getNutrientColor(analysis.overallScore) }}>
-                {Math.round(analysis.overallScore)}%
+              <div className="stat-card-row">
+                <div>
+                  <div className="stat-label">Nutrient Score</div>
+                  <div className="stat-value" style={{ color: getNutrientColor(analysis.overallScore) }}>
+                    {Math.round(analysis.overallScore)}%
+                  </div>
+                  <div className="stat-meta">of daily needs</div>
+                </div>
+                <div className="stat-icon amber">⚡</div>
               </div>
-              <div className="stat-label">of daily needs</div>
             </div>
           </div>
 
           {/* Macronutrients */}
           <div className="card">
-            <h3 style={{ marginBottom: '1rem' }}>Macronutrients</h3>
+            <div className="card-header">
+              <div>
+                <div className="card-title">Macronutrients</div>
+                <div className="card-subtitle">Protein, carbs, and fat breakdown</div>
+              </div>
+            </div>
             <div className="nutrient-grid">
               {analysis.macronutrients && analysis.macronutrients.map(nutrient => (
                 <div key={nutrient.name} className="nutrient-bar-item">
@@ -112,10 +130,10 @@ function NutritionAnalysis({ user, onLogout }) {
                     />
                   </div>
                   <div className="nutrient-bar-footer">
-                    <span style={{ color: getNutrientColor(nutrient.percentage) }}>
+                    <span style={{ color: getNutrientColor(nutrient.percentage), fontWeight: 500 }}>
                       {getNutrientStatus(nutrient.percentage)}
                     </span>
-                    <span>{Math.round(nutrient.percentage)}%</span>
+                    <span style={{ color: 'var(--color-text-muted)' }}>{Math.round(nutrient.percentage)}%</span>
                   </div>
                 </div>
               ))}
@@ -124,7 +142,12 @@ function NutritionAnalysis({ user, onLogout }) {
 
           {/* Vitamins & Minerals */}
           <div className="card">
-            <h3 style={{ marginBottom: '1rem' }}>Vitamins & Minerals</h3>
+            <div className="card-header">
+              <div>
+                <div className="card-title">Vitamins & Minerals</div>
+                <div className="card-subtitle">Micronutrient levels</div>
+              </div>
+            </div>
             <div className="nutrient-grid">
               {analysis.micronutrients && analysis.micronutrients.map(nutrient => (
                 <div key={nutrient.name} className="nutrient-bar-item">
@@ -144,10 +167,10 @@ function NutritionAnalysis({ user, onLogout }) {
                     />
                   </div>
                   <div className="nutrient-bar-footer">
-                    <span style={{ color: getNutrientColor(nutrient.percentage) }}>
+                    <span style={{ color: getNutrientColor(nutrient.percentage), fontWeight: 500 }}>
                       {getNutrientStatus(nutrient.percentage)}
                     </span>
-                    <span>{Math.round(nutrient.percentage)}%</span>
+                    <span style={{ color: 'var(--color-text-muted)' }}>{Math.round(nutrient.percentage)}%</span>
                   </div>
                 </div>
               ))}
@@ -157,13 +180,16 @@ function NutritionAnalysis({ user, onLogout }) {
           {/* Recommendations */}
           {analysis.recommendations && analysis.recommendations.length > 0 && (
             <div className="card">
-              <h3 style={{ marginBottom: '1rem' }}>Recommendations 💡</h3>
+              <div className="card-header">
+                <div>
+                  <div className="card-title">Recommendations</div>
+                  <div className="card-subtitle">Personalised suggestions to improve your diet</div>
+                </div>
+              </div>
               <div className="recommendations-list">
                 {analysis.recommendations.map((rec, index) => (
                   <div key={index} className="recommendation-item">
-                    <div className="rec-icon">
-                      {rec.priority === 'HIGH' ? '🔴' : rec.priority === 'MEDIUM' ? '🟡' : '🟢'}
-                    </div>
+                    <div className={`rec-priority ${rec.priority === 'HIGH' ? 'high' : rec.priority === 'MEDIUM' ? 'medium' : 'low'}`} />
                     <div className="rec-content">
                       <strong>{rec.nutrient}</strong>
                       <p>{rec.message}</p>

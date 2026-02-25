@@ -34,50 +34,58 @@ function LoginPage({ onLogin }) {
   }
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <div className="auth-header">
-          <h1>🥗 Diet Balance Tracker</h1>
-          <p>Track your nutrition, stay healthy!</p>
+    <div className="auth-page">
+      {/* Left branding panel */}
+      <div className="auth-side">
+        <div className="auth-side-content">
+          <div className="auth-side-logo">🌿</div>
+          <h1>Diet Balance Tracker</h1>
+          <p>Track every bite, understand your nutrition, and achieve your health goals with smart insights.</p>
         </div>
+      </div>
 
-        <form onSubmit={handleSubmit} className="auth-form">
-          <h2>Login</h2>
+      {/* Right form panel */}
+      <div className="auth-form-panel">
+        <div className="auth-form-container">
+          <h2>Welcome back</h2>
+          <p>Sign in to your account to continue</p>
 
           {error && <div className="error">{error}</div>}
 
-          <div className="form-group">
-            <label>Username</label>
-            <input
-              type="text"
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-              required
-              placeholder="Enter your username"
-            />
-          </div>
+          <form onSubmit={handleSubmit} className="auth-form">
+            <div className="form-group">
+              <label>Username</label>
+              <input
+                type="text"
+                name="username"
+                value={formData.username}
+                onChange={handleChange}
+                required
+                placeholder="Enter your username"
+              />
+            </div>
 
-          <div className="form-group">
-            <label>Password</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              placeholder="Enter your password"
-            />
-          </div>
+            <div className="form-group">
+              <label>Password</label>
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                placeholder="Enter your password"
+              />
+            </div>
 
-          <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? 'Signing in...' : 'Sign In'}
+            </button>
 
-          <p className="auth-link">
-            Don't have an account? <Link to="/register">Register here</Link>
-          </p>
-        </form>
+            <p className="auth-link">
+              Don't have an account? <Link to="/register">Create one</Link>
+            </p>
+          </form>
+        </div>
       </div>
     </div>
   )

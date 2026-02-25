@@ -52,7 +52,6 @@ function UserProfile({ user, onLogout, onUpdateUser }) {
       setProfile(response.data)
       setEditing(false)
       setSuccess('Profile updated successfully!')
-      // Update local storage
       const storedUser = JSON.parse(localStorage.getItem('user'))
       storedUser.email = response.data.email
       localStorage.setItem('user', JSON.stringify(storedUser))
@@ -65,17 +64,82 @@ function UserProfile({ user, onLogout, onUpdateUser }) {
 
   if (loading) return <Layout user={user} onLogout={onLogout}><div className="loading">Loading profile...</div></Layout>
 
+  const initials = profile?.username ? profile.username.charAt(0).toUpperCase() : '?'
+
   return (
     <Layout user={user} onLogout={onLogout}>
-      <h2 style={{ marginBottom: '2rem', color: '#1f2937' }}>My Profile 👤</h2>
+      <div className="page-header">
+        <h1>My Profile</h1>
+        <p>Manage your account information and view activity</p>
+      </div>
 
       {success && <div className="success">{success}</div>}
       {error && <div className="error">{error}</div>}
 
+      {/* Profile banner */}
+      <div className="card" style={{ textAlign: 'center', paddingTop: '2rem', paddingBottom: '2rem' }}>
+        <div style={{
+          width: 80, height: 80, borderRadius: '50%',
+          background: 'var(--color-primary)', color: '#fff',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '2rem', fontWeight: 700, marginBottom: '0.75rem'
+        }}>
+          {initials}
+        </div>
+        <h2 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--color-text)' }}>{profile?.username}</h2>
+        <p style={{ margin: '0.25rem 0 0', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{profile?.email}</p>
+        <p style={{ margin: '0.25rem 0 0', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
+          Member since {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString('en-US', {
+            year: 'numeric', month: 'long', day: 'numeric'
+          }) : 'N/A'}
+        </p>
+      </div>
+
       <div className="profile-grid">
-        {/* Profile Info Card */}
+        {/* Stats Row */}
         <div className="card">
-          <h3>Account Information</h3>
+          <div className="card-header">
+            <div>
+              <div className="card-title">Activity Summary</div>
+              <div className="card-subtitle">Your tracking history at a glance</div>
+            </div>
+          </div>
+          <div className="profile-stats">
+            <div className="profile-stat-item">
+              <div className="profile-stat-value" style={{ color: 'var(--color-primary)' }}>
+                {stats?.totalMeals || 0}
+              </div>
+              <div className="profile-stat-label">Total Meals</div>
+            </div>
+            <div className="profile-stat-item">
+              <div className="profile-stat-value" style={{ color: 'var(--color-success)' }}>
+                {stats?.activeDays || 0}
+              </div>
+              <div className="profile-stat-label">Active Days</div>
+            </div>
+            <div className="profile-stat-item">
+              <div className="profile-stat-value" style={{ color: 'var(--color-warning)' }}>
+                {stats?.avgMealsPerDay || 0}
+              </div>
+              <div className="profile-stat-label">Avg Meals/Day</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Account Info Card */}
+        <div className="card">
+          <div className="card-header">
+            <div>
+              <div className="card-title">Account Information</div>
+              <div className="card-subtitle">View and edit your details</div>
+            </div>
+            {!editing && (
+              <button className="btn btn-outline btn-sm" onClick={() => setEditing(true)}>
+                Edit
+              </button>
+            )}
+          </div>
+
           {!editing ? (
             <div className="profile-info">
               <div className="profile-field">
@@ -90,76 +154,42 @@ function UserProfile({ user, onLogout, onUpdateUser }) {
                 <span className="profile-label">Age</span>
                 <span className="profile-value">{profile?.age} years</span>
               </div>
-              <div className="profile-field">
-                <span className="profile-label">Member Since</span>
-                <span className="profile-value">
-                  {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString('en-US', {
-                    year: 'numeric', month: 'long', day: 'numeric'
-                  }) : 'N/A'}
-                </span>
-              </div>
-              <button className="btn btn-primary" onClick={() => setEditing(true)} style={{ marginTop: '1rem' }}>
-                Edit Profile
-              </button>
             </div>
           ) : (
             <form onSubmit={handleUpdate}>
               <div className="form-group">
                 <label>Username</label>
-                <input type="text" value={profile?.username} disabled style={{ background: '#f3f4f6' }} />
-                <small style={{ color: '#6b7280' }}>Username cannot be changed</small>
+                <input type="text" value={profile?.username} disabled />
+                <small style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>Username cannot be changed</small>
               </div>
-              <div className="form-group">
-                <label>Email</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
-                />
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Email</label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Age</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="120"
+                    value={formData.age}
+                    onChange={(e) => setFormData({ ...formData, age: parseInt(e.target.value) })}
+                    required
+                  />
+                </div>
               </div>
-              <div className="form-group">
-                <label>Age</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="120"
-                  value={formData.age}
-                  onChange={(e) => setFormData({ ...formData, age: parseInt(e.target.value) })}
-                  required
-                />
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button type="submit" className="btn btn-success">Save Changes</button>
-                <button type="button" className="btn btn-outline" onClick={() => setEditing(false)}>Cancel</button>
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                <button type="submit" className="btn btn-primary">Save Changes</button>
+                <button type="button" className="btn btn-ghost" onClick={() => setEditing(false)}>Cancel</button>
               </div>
             </form>
           )}
-        </div>
-
-        {/* Stats Card */}
-        <div className="card">
-          <h3>Activity Summary</h3>
-          <div className="profile-stats">
-            <div className="profile-stat-item">
-              <div className="profile-stat-value" style={{ color: '#667eea' }}>
-                {stats?.totalMeals || 0}
-              </div>
-              <div className="profile-stat-label">Total Meals Logged</div>
-            </div>
-            <div className="profile-stat-item">
-              <div className="profile-stat-value" style={{ color: '#10b981' }}>
-                {stats?.activeDays || 0}
-              </div>
-              <div className="profile-stat-label">Active Days</div>
-            </div>
-            <div className="profile-stat-item">
-              <div className="profile-stat-value" style={{ color: '#f59e0b' }}>
-                {stats?.avgMealsPerDay || 0}
-              </div>
-              <div className="profile-stat-label">Avg Meals/Day</div>
-            </div>
-          </div>
         </div>
       </div>
     </Layout>
