@@ -16,50 +16,60 @@ function NutritionAnalysis({ user, onLogout }) {
     try {
       const response = await api.get(`/api/analysis/${period}?userId=${user.userId}`)
       setAnalysis(response.data)
-    } catch (err) {
-      console.error('Error fetching analysis:', err)
-    } finally {
-      setLoading(false)
-    }
+    } catch (err) { console.error('Error fetching analysis:', err) }
+    finally { setLoading(false) }
   }
 
-  const getNutrientColor = (pct) => {
-    if (pct >= 80) return 'var(--color-success)'
-    if (pct >= 50) return 'var(--color-warning)'
-    return 'var(--color-danger)'
-  }
+  const nutrientColor = (pct) => pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444'
+  const nutrientTw = (pct) => pct >= 80 ? 'text-green-600' : pct >= 50 ? 'text-amber-500' : 'text-red-500'
+  const nutrientBgTw = (pct) => pct >= 80 ? 'bg-green-500' : pct >= 50 ? 'bg-amber-400' : 'bg-red-500'
+  const nutrientStatus = (pct) => pct >= 100 ? '✓ Sufficient' : pct >= 80 ? 'Adequate' : pct >= 50 ? 'Low' : '⚠ Deficient'
+  const scoreEmoji = (s) => s >= 80 ? '🎉' : s >= 60 ? '👍' : s >= 40 ? '💪' : '⚡'
 
-  const getNutrientStatus = (pct) => {
-    if (pct >= 100) return '✓ Sufficient'
-    if (pct >= 80) return 'Adequate'
-    if (pct >= 50) return 'Low'
-    return '⚠ Deficient'
-  }
-
-  const scoreEmoji = (score) => {
-    if (score >= 80) return '🎉'
-    if (score >= 60) return '👍'
-    if (score >= 40) return '💪'
-    return '⚡'
+  const NutrientBar = ({ nutrient, unit = 'g', delay = 0 }) => {
+    const pct = Math.min(nutrient.percentage, 100)
+    return (
+      <div className="space-y-1.5">
+        <div className="flex justify-between items-baseline">
+          <span className="text-sm font-semibold text-slate-700">{nutrient.name}</span>
+          <span className="text-xs text-slate-400">
+            {nutrient.consumed.toFixed(1)}{unit} / {nutrient.recommended.toFixed(0)}{unit}
+          </span>
+        </div>
+        <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+          <motion.div
+            className={`h-full rounded-full ${nutrientBgTw(nutrient.percentage)}`}
+            initial={{ width: 0 }}
+            animate={{ width: `${pct}%` }}
+            transition={{ duration: 0.6, delay, ease: 'easeOut' }}
+          />
+        </div>
+        <div className="flex justify-between text-[11px]">
+          <span className={`font-semibold ${nutrientTw(nutrient.percentage)}`}>{nutrientStatus(nutrient.percentage)}</span>
+          <span className="text-slate-400">{Math.round(nutrient.percentage)}%</span>
+        </div>
+      </div>
+    )
   }
 
   return (
     <Layout user={user} onLogout={onLogout}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
+      {/* Header + Period Toggle */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
         <div>
-          <h1 style={{ fontSize: '1.65rem', fontWeight: 700, color: 'var(--color-text)', letterSpacing: '-0.02em' }}>
-            Nutrition Analysis
-          </h1>
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.92rem', marginTop: '0.2rem' }}>
-            Detailed breakdown of your nutrient intake
-          </p>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Nutrition Analysis</h1>
+          <p className="text-sm text-slate-500 mt-1">Detailed breakdown of your nutrient intake</p>
         </div>
-        <div className="period-selector">
+        <div className="flex gap-2 bg-slate-100 p-1 rounded-xl">
           {['today', 'week'].map(p => (
             <button
               key={p}
-              className={`period-btn ${period === p ? 'active' : ''}`}
               onClick={() => setPeriod(p)}
+              className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                period === p
+                  ? 'bg-white text-slate-800 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
             >
               {p === 'today' ? '📅 Today' : '📊 This Week'}
             </button>
@@ -68,39 +78,44 @@ function NutritionAnalysis({ user, onLogout }) {
       </div>
 
       {loading ? (
-        <div className="loading">Loading analysis...</div>
+        <div className="flex items-center justify-center py-16 text-slate-400 text-sm">
+          <span className="w-5 h-5 border-2 border-slate-200 border-t-brand-500 rounded-full animate-spin mr-3" />
+          Loading analysis...
+        </div>
       ) : !analysis ? (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card">
-          <div className="empty-state">
-            <div className="empty-state-icon">📊</div>
-            <p>No meals logged for this period. Start logging meals to see your nutrition analysis!</p>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl border border-slate-100 shadow-sm">
+          <div className="text-center py-16">
+            <div className="text-4xl mb-3 opacity-30">📊</div>
+            <p className="text-slate-400 text-sm">No meals logged for this period. Start logging to see your nutrition analysis!</p>
           </div>
         </motion.div>
       ) : (
         <>
-          {/* Summary stat cards */}
-          <div className="stats-grid">
+          {/* Summary Stat Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             {[
-              { label: 'Total Calories', value: Math.round(analysis.totalCalories), unit: 'kcal', icon: <FiZap />, color: 'amber', bg: '#fef3c7' },
-              { label: 'Meals Logged', value: analysis.mealCount, unit: period === 'today' ? 'today' : 'this week', icon: <FiDroplet />, color: 'green', bg: '#d1fae5' },
-              { label: 'Nutrient Score', value: `${Math.round(analysis.overallScore)}%`, unit: 'of daily needs', icon: <FiAward />, color: 'teal', bg: '#ccfbf1', valueColor: getNutrientColor(analysis.overallScore) }
+              { label: 'Total Calories', value: Math.round(analysis.totalCalories), unit: 'kcal', icon: <FiZap size={18} />, gradient: 'from-amber-500 to-orange-500', bg: 'bg-amber-50' },
+              { label: 'Meals Logged', value: analysis.mealCount, unit: period === 'today' ? 'today' : 'this week', icon: <FiDroplet size={18} />, gradient: 'from-emerald-500 to-green-500', bg: 'bg-emerald-50' },
+              { label: 'Nutrient Score', value: `${Math.round(analysis.overallScore)}%`, unit: 'of daily needs', icon: <FiAward size={18} />, gradient: 'from-brand-500 to-purple-500', bg: 'bg-brand-50', special: true }
             ].map((s, i) => (
               <motion.div
                 key={s.label}
-                className="stat-card"
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.08 }}
+                className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5"
               >
-                <div className="stat-card-row">
+                <div className="flex justify-between items-start">
                   <div>
-                    <div className="stat-label">{s.label}</div>
-                    <div className="stat-value" style={s.valueColor ? { color: s.valueColor } : {}}>
+                    <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">{s.label}</p>
+                    <p className={`text-2xl font-bold mt-1 ${s.special ? '' : 'text-slate-800'}`} style={s.special ? { color: nutrientColor(analysis.overallScore) } : {}}>
                       {s.value}
-                    </div>
-                    <div className="stat-meta">{s.unit}</div>
+                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">{s.unit}</p>
                   </div>
-                  <div className={`stat-icon ${s.color}`}>{s.icon}</div>
+                  <div className={`w-10 h-10 rounded-xl ${s.bg} flex items-center justify-center`}>
+                    <div className={`bg-gradient-to-br ${s.gradient} bg-clip-text text-transparent`}>{s.icon}</div>
+                  </div>
                 </div>
               </motion.div>
             ))}
@@ -111,25 +126,21 @@ function NutritionAnalysis({ user, onLogout }) {
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.25 }}
-            className="card"
-            style={{ textAlign: 'center', padding: '2rem 1.5rem' }}
+            className="bg-white rounded-2xl border border-slate-100 shadow-sm text-center py-8 px-6 mb-6"
           >
-            <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>{scoreEmoji(analysis.overallScore)}</div>
-            <div style={{ fontSize: '2rem', fontWeight: 800, color: getNutrientColor(analysis.overallScore) }}>
+            <div className="text-4xl mb-2">{scoreEmoji(analysis.overallScore)}</div>
+            <div className="text-4xl font-extrabold" style={{ color: nutrientColor(analysis.overallScore) }}>
               {Math.round(analysis.overallScore)}%
             </div>
-            <div style={{ color: 'var(--color-text-muted)', fontSize: '0.88rem', marginTop: '0.25rem' }}>
-              Overall Nutrition Score
-            </div>
-            {/* Score bar */}
-            <div style={{ maxWidth: '320px', margin: '1rem auto 0' }}>
-              <div className="progress-bar-track" style={{ height: '10px' }}>
+            <p className="text-sm text-slate-400 mt-1">Overall Nutrition Score</p>
+            <div className="max-w-xs mx-auto mt-4">
+              <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
                 <motion.div
-                  className="progress-bar-fill"
+                  className="h-full rounded-full"
                   initial={{ width: 0 }}
                   animate={{ width: `${Math.min(analysis.overallScore, 100)}%` }}
                   transition={{ duration: 0.8, ease: 'easeOut' }}
-                  style={{ backgroundColor: getNutrientColor(analysis.overallScore) }}
+                  style={{ backgroundColor: nutrientColor(analysis.overallScore) }}
                 />
               </div>
             </div>
@@ -140,43 +151,17 @@ function NutritionAnalysis({ user, onLogout }) {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35 }}
-            className="card"
+            className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mb-6"
           >
-            <div className="card-header">
-              <div>
-                <div className="card-title"><FiActivity size={16} style={{ marginRight: '0.4rem', verticalAlign: '-2px' }} /> Macronutrients</div>
-                <div className="card-subtitle">Protein, carbs, and fat breakdown</div>
-              </div>
+            <div className="flex items-center gap-2 mb-1">
+              <FiActivity size={16} className="text-brand-500" />
+              <h2 className="text-base font-bold text-slate-800">Macronutrients</h2>
             </div>
-            <div className="nutrient-grid">
-              {analysis.macronutrients && analysis.macronutrients.map((nutrient, i) => {
-                const pct = Math.min(nutrient.percentage, 100)
-                return (
-                  <div key={nutrient.name} className="nutrient-bar-item">
-                    <div className="nutrient-bar-header">
-                      <span className="nutrient-bar-name">{nutrient.name}</span>
-                      <span className="nutrient-bar-value">
-                        {nutrient.consumed.toFixed(1)}g / {nutrient.recommended.toFixed(0)}g
-                      </span>
-                    </div>
-                    <div className="nutrient-bar-track">
-                      <motion.div
-                        className="nutrient-bar-fill"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${pct}%` }}
-                        transition={{ duration: 0.6, delay: 0.4 + i * 0.1, ease: 'easeOut' }}
-                        style={{ backgroundColor: getNutrientColor(nutrient.percentage) }}
-                      />
-                    </div>
-                    <div className="nutrient-bar-footer">
-                      <span style={{ color: getNutrientColor(nutrient.percentage), fontWeight: 600 }}>
-                        {getNutrientStatus(nutrient.percentage)}
-                      </span>
-                      <span style={{ color: 'var(--color-text-muted)' }}>{Math.round(nutrient.percentage)}%</span>
-                    </div>
-                  </div>
-                )
-              })}
+            <p className="text-xs text-slate-400 mb-5">Protein, carbs, and fat breakdown</p>
+            <div className="space-y-5">
+              {analysis.macronutrients?.map((nutrient, i) => (
+                <NutrientBar key={nutrient.name} nutrient={nutrient} delay={0.4 + i * 0.1} />
+              ))}
             </div>
           </motion.div>
 
@@ -185,75 +170,47 @@ function NutritionAnalysis({ user, onLogout }) {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.45 }}
-            className="card"
+            className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mb-6"
           >
-            <div className="card-header">
-              <div>
-                <div className="card-title"><FiTrendingUp size={16} style={{ marginRight: '0.4rem', verticalAlign: '-2px' }} /> Vitamins & Minerals</div>
-                <div className="card-subtitle">Micronutrient levels</div>
-              </div>
+            <div className="flex items-center gap-2 mb-1">
+              <FiTrendingUp size={16} className="text-brand-500" />
+              <h2 className="text-base font-bold text-slate-800">Vitamins & Minerals</h2>
             </div>
-            <div className="nutrient-grid">
-              {analysis.micronutrients && analysis.micronutrients.map((nutrient, i) => {
-                const pct = Math.min(nutrient.percentage, 100)
-                return (
-                  <div key={nutrient.name} className="nutrient-bar-item">
-                    <div className="nutrient-bar-header">
-                      <span className="nutrient-bar-name">{nutrient.name}</span>
-                      <span className="nutrient-bar-value">
-                        {nutrient.consumed.toFixed(1)}{nutrient.unit} / {nutrient.recommended.toFixed(0)}{nutrient.unit}
-                      </span>
-                    </div>
-                    <div className="nutrient-bar-track">
-                      <motion.div
-                        className="nutrient-bar-fill"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${pct}%` }}
-                        transition={{ duration: 0.6, delay: 0.5 + i * 0.05, ease: 'easeOut' }}
-                        style={{ backgroundColor: getNutrientColor(nutrient.percentage) }}
-                      />
-                    </div>
-                    <div className="nutrient-bar-footer">
-                      <span style={{ color: getNutrientColor(nutrient.percentage), fontWeight: 600 }}>
-                        {getNutrientStatus(nutrient.percentage)}
-                      </span>
-                      <span style={{ color: 'var(--color-text-muted)' }}>{Math.round(nutrient.percentage)}%</span>
-                    </div>
-                  </div>
-                )
-              })}
+            <p className="text-xs text-slate-400 mb-5">Micronutrient levels</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
+              {analysis.micronutrients?.map((nutrient, i) => (
+                <NutrientBar key={nutrient.name} nutrient={nutrient} unit={nutrient.unit} delay={0.5 + i * 0.05} />
+              ))}
             </div>
           </motion.div>
 
           {/* Recommendations */}
-          {analysis.recommendations && analysis.recommendations.length > 0 && (
+          {analysis.recommendations?.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.55 }}
-              className="card"
+              className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mb-6"
             >
-              <div className="card-header">
-                <div>
-                  <div className="card-title">💡 Recommendations</div>
-                  <div className="card-subtitle">Personalised suggestions to improve your diet</div>
-                </div>
-              </div>
-              <div className="recommendations-list">
-                {analysis.recommendations.map((rec, index) => (
+              <h2 className="text-base font-bold text-slate-800 mb-1">💡 Recommendations</h2>
+              <p className="text-xs text-slate-400 mb-5">Personalised suggestions to improve your diet</p>
+              <div className="space-y-3">
+                {analysis.recommendations.map((rec, idx) => (
                   <motion.div
-                    key={index}
-                    className="recommendation-item"
+                    key={idx}
+                    className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-100"
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.6 + index * 0.05 }}
+                    transition={{ delay: 0.6 + idx * 0.05 }}
                   >
-                    <div className={`rec-priority ${rec.priority === 'HIGH' ? 'high' : rec.priority === 'MEDIUM' ? 'medium' : 'low'}`} />
-                    <div className="rec-content">
-                      <strong>{rec.nutrient}</strong>
-                      <p>{rec.message}</p>
-                      {rec.foods && rec.foods.length > 0 && (
-                        <p className="rec-foods">🍴 Try: {rec.foods.join(', ')}</p>
+                    <span className={`mt-1 w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                      rec.priority === 'HIGH' ? 'bg-red-500' : rec.priority === 'MEDIUM' ? 'bg-amber-400' : 'bg-green-400'
+                    }`} />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-700">{rec.nutrient}</p>
+                      <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{rec.message}</p>
+                      {rec.foods?.length > 0 && (
+                        <p className="text-xs text-brand-600 font-medium mt-1.5">🍴 Try: {rec.foods.join(', ')}</p>
                       )}
                     </div>
                   </motion.div>

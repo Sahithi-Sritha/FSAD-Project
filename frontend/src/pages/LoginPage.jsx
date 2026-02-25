@@ -1,30 +1,22 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { FiLogIn, FiUser, FiLock } from 'react-icons/fi'
+import { FiLogIn, FiUser, FiLock, FiArrowRight } from 'react-icons/fi'
 import api from '../services/api'
-import './AuthPages.css'
 
 function LoginPage({ onLogin }) {
-  const [formData, setFormData] = useState({
-    username: '',
-    password: ''
-  })
+  const [formData, setFormData] = useState({ username: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    })
+    setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setLoading(true)
-
     try {
       const response = await api.post('/api/auth/login', formData)
       onLogin(response.data)
@@ -36,15 +28,20 @@ function LoginPage({ onLogin }) {
   }
 
   return (
-    <div className="auth-page">
-      {/* Left branding panel */}
-      <div className="auth-side">
-        <div className="auth-side-content">
+    <div className="min-h-screen flex">
+      {/* Left — Gradient branding panel */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-brand-600 via-brand-700 to-purple-800">
+        {/* Decorative shapes */}
+        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-white/5" />
+        <div className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full bg-white/5" />
+        <div className="absolute top-1/4 right-1/3 w-40 h-40 rounded-full bg-purple-400/10" />
+
+        <div className="relative z-10 flex flex-col items-center justify-center w-full px-12">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5 }}
-            className="auth-side-logo"
+            transition={{ duration: 0.6 }}
+            className="w-20 h-20 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center text-4xl mb-8 shadow-2xl"
           >
             🌿
           </motion.div>
@@ -52,6 +49,7 @@ function LoginPage({ onLogin }) {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.15 }}
+            className="text-4xl font-extrabold text-white mb-3 tracking-tight"
           >
             NutriTrack
           </motion.h1>
@@ -59,38 +57,56 @@ function LoginPage({ onLogin }) {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.25 }}
+            className="text-brand-200 text-center max-w-sm text-lg leading-relaxed"
           >
             Track every bite, understand your nutrition, and achieve your health goals with smart insights.
           </motion.p>
+
           <motion.div
-            className="auth-side-features"
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.35 }}
+            transition={{ delay: 0.4 }}
+            className="flex flex-wrap gap-3 mt-10 justify-center"
           >
-            <div className="auth-feature">🍛 111+ Indian foods</div>
-            <div className="auth-feature">📊 Real-time analysis</div>
-            <div className="auth-feature">💡 Smart recommendations</div>
+            {['🍛 111+ Indian Foods', '📊 Real-time Analysis', '💡 Smart Recommendations', '🤖 AI-Powered'].map((f) => (
+              <span key={f} className="px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm text-white/80 text-sm font-medium border border-white/10">
+                {f}
+              </span>
+            ))}
           </motion.div>
         </div>
       </div>
 
-      {/* Right form panel */}
-      <div className="auth-form-panel">
+      {/* Right — Login form */}
+      <div className="flex-1 flex items-center justify-center px-6 py-12 bg-white">
         <motion.div
-          className="auth-form-container"
           initial={{ opacity: 0, x: 30 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4 }}
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-md"
         >
-          <h2>Welcome back</h2>
-          <p>Sign in to your account to continue</p>
+          {/* Mobile logo */}
+          <div className="lg:hidden text-center mb-8">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center text-2xl mx-auto mb-3 shadow-lg shadow-brand-500/20">
+              🌿
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900">NutriTrack</h1>
+          </div>
 
-          {error && <div className="error">{error}</div>}
+          <h2 className="text-2xl font-bold text-slate-900 mb-1">Welcome back</h2>
+          <p className="text-slate-500 mb-8">Sign in to your account to continue</p>
 
-          <form onSubmit={handleSubmit} className="auth-form">
-            <div className="form-group">
-              <label><FiUser size={13} style={{ marginRight: '0.3rem', verticalAlign: '-1px' }} /> Username</label>
+          {error && (
+            <div className="bg-red-50 text-red-700 px-4 py-3 rounded-xl mb-6 text-sm font-medium border border-red-200 flex items-center gap-2">
+              <span className="text-red-400">●</span> {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <FiUser className="inline mr-1.5 -mt-0.5" size={14} />Username
+              </label>
               <input
                 type="text"
                 name="username"
@@ -98,11 +114,14 @@ function LoginPage({ onLogin }) {
                 onChange={handleChange}
                 required
                 placeholder="Enter your username"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-sm"
               />
             </div>
 
-            <div className="form-group">
-              <label><FiLock size={13} style={{ marginRight: '0.3rem', verticalAlign: '-1px' }} /> Password</label>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <FiLock className="inline mr-1.5 -mt-0.5" size={14} />Password
+              </label>
               <input
                 type="password"
                 name="password"
@@ -110,15 +129,27 @@ function LoginPage({ onLogin }) {
                 onChange={handleChange}
                 required
                 placeholder="Enter your password"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-sm"
               />
             </div>
 
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'Signing in...' : <><FiLogIn size={16} /> Sign In</>}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 px-6 rounded-xl bg-gradient-to-r from-brand-600 to-purple-600 text-white font-semibold text-sm hover:shadow-lg hover:shadow-brand-500/25 transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>Sign In <FiArrowRight size={16} /></>
+              )}
             </button>
 
-            <p className="auth-link">
-              Don't have an account? <Link to="/register">Create one</Link>
+            <p className="text-center text-sm text-slate-500 mt-6">
+              Don&apos;t have an account?{' '}
+              <Link to="/register" className="text-brand-600 font-semibold hover:text-brand-700 transition-colors">
+                Create one
+              </Link>
             </p>
           </form>
         </motion.div>

@@ -1,37 +1,24 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { FiUserPlus, FiUser, FiMail, FiLock, FiCalendar } from 'react-icons/fi'
+import { FiUserPlus, FiUser, FiMail, FiLock, FiCalendar, FiArrowRight } from 'react-icons/fi'
 import api from '../services/api'
-import './AuthPages.css'
 
 function RegisterPage({ onRegister }) {
-  const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    password: '',
-    age: ''
-  })
+  const [formData, setFormData] = useState({ username: '', email: '', password: '', age: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    })
+    setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setLoading(true)
-
     try {
-      const response = await api.post('/api/auth/register', {
-        ...formData,
-        age: parseInt(formData.age)
-      })
+      const response = await api.post('/api/auth/register', { ...formData, age: parseInt(formData.age) })
       onRegister(response.data)
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.')
@@ -41,15 +28,19 @@ function RegisterPage({ onRegister }) {
   }
 
   return (
-    <div className="auth-page">
-      {/* Left branding panel */}
-      <div className="auth-side">
-        <div className="auth-side-content">
+    <div className="min-h-screen flex">
+      {/* Left — Gradient branding panel */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-purple-700 via-brand-700 to-brand-600">
+        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-white/5" />
+        <div className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full bg-white/5" />
+        <div className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full bg-brand-400/10" />
+
+        <div className="relative z-10 flex flex-col items-center justify-center w-full px-12">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5 }}
-            className="auth-side-logo"
+            transition={{ duration: 0.6 }}
+            className="w-20 h-20 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center text-4xl mb-8 shadow-2xl"
           >
             🌿
           </motion.div>
@@ -57,6 +48,7 @@ function RegisterPage({ onRegister }) {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.15 }}
+            className="text-4xl font-extrabold text-white mb-3 tracking-tight"
           >
             NutriTrack
           </motion.h1>
@@ -64,38 +56,56 @@ function RegisterPage({ onRegister }) {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.25 }}
+            className="text-purple-200 text-center max-w-sm text-lg leading-relaxed"
           >
             Join thousands of users who track their nutrition and live healthier every day.
           </motion.p>
+
           <motion.div
-            className="auth-side-features"
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.35 }}
+            transition={{ delay: 0.4 }}
+            className="flex flex-wrap gap-3 mt-10 justify-center"
           >
-            <div className="auth-feature">🍛 111+ Indian foods</div>
-            <div className="auth-feature">📊 Real-time analysis</div>
-            <div className="auth-feature">💡 Smart recommendations</div>
+            {['🍛 111+ Indian Foods', '📊 Real-time Analysis', '💡 Smart Insights', '🤖 AI-Powered'].map((f) => (
+              <span key={f} className="px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm text-white/80 text-sm font-medium border border-white/10">
+                {f}
+              </span>
+            ))}
           </motion.div>
         </div>
       </div>
 
-      {/* Right form panel */}
-      <div className="auth-form-panel">
+      {/* Right — Register form */}
+      <div className="flex-1 flex items-center justify-center px-6 py-12 bg-white">
         <motion.div
-          className="auth-form-container"
           initial={{ opacity: 0, x: 30 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4 }}
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-md"
         >
-          <h2>Create your account</h2>
-          <p>Start your nutrition journey today</p>
+          {/* Mobile logo */}
+          <div className="lg:hidden text-center mb-8">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center text-2xl mx-auto mb-3 shadow-lg shadow-brand-500/20">
+              🌿
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900">NutriTrack</h1>
+          </div>
 
-          {error && <div className="error">{error}</div>}
+          <h2 className="text-2xl font-bold text-slate-900 mb-1">Create your account</h2>
+          <p className="text-slate-500 mb-8">Start your nutrition journey today</p>
 
-          <form onSubmit={handleSubmit} className="auth-form">
-            <div className="form-group">
-              <label><FiUser size={13} style={{ marginRight: '0.3rem', verticalAlign: '-1px' }} /> Username</label>
+          {error && (
+            <div className="bg-red-50 text-red-700 px-4 py-3 rounded-xl mb-6 text-sm font-medium border border-red-200 flex items-center gap-2">
+              <span className="text-red-400">●</span> {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <FiUser className="inline mr-1.5 -mt-0.5" size={14} />Username
+              </label>
               <input
                 type="text"
                 name="username"
@@ -104,11 +114,14 @@ function RegisterPage({ onRegister }) {
                 required
                 minLength="3"
                 placeholder="Choose a username"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-sm"
               />
             </div>
 
-            <div className="form-group">
-              <label><FiMail size={13} style={{ marginRight: '0.3rem', verticalAlign: '-1px' }} /> Email</label>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <FiMail className="inline mr-1.5 -mt-0.5" size={14} />Email
+              </label>
               <input
                 type="email"
                 name="email"
@@ -116,12 +129,15 @@ function RegisterPage({ onRegister }) {
                 onChange={handleChange}
                 required
                 placeholder="your@email.com"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-sm"
               />
             </div>
 
-            <div className="form-row">
-              <div className="form-group">
-                <label><FiLock size={13} style={{ marginRight: '0.3rem', verticalAlign: '-1px' }} /> Password</label>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  <FiLock className="inline mr-1.5 -mt-0.5" size={14} />Password
+                </label>
                 <input
                   type="password"
                   name="password"
@@ -129,12 +145,14 @@ function RegisterPage({ onRegister }) {
                   onChange={handleChange}
                   required
                   minLength="6"
-                  placeholder="Min 6 characters"
+                  placeholder="Min 6 chars"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-sm"
                 />
               </div>
-
-              <div className="form-group">
-                <label><FiCalendar size={13} style={{ marginRight: '0.3rem', verticalAlign: '-1px' }} /> Age</label>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  <FiCalendar className="inline mr-1.5 -mt-0.5" size={14} />Age
+                </label>
                 <input
                   type="number"
                   name="age"
@@ -144,16 +162,28 @@ function RegisterPage({ onRegister }) {
                   min="1"
                   max="120"
                   placeholder="Your age"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-sm"
                 />
               </div>
             </div>
 
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'Creating account...' : <><FiUserPlus size={16} /> Create Account</>}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 px-6 rounded-xl bg-gradient-to-r from-purple-600 to-brand-600 text-white font-semibold text-sm hover:shadow-lg hover:shadow-brand-500/25 transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>Create Account <FiArrowRight size={16} /></>
+              )}
             </button>
 
-            <p className="auth-link">
-              Already have an account? <Link to="/login">Sign in</Link>
+            <p className="text-center text-sm text-slate-500 mt-6">
+              Already have an account?{' '}
+              <Link to="/login" className="text-brand-600 font-semibold hover:text-brand-700 transition-colors">
+                Sign in
+              </Link>
             </p>
           </form>
         </motion.div>
