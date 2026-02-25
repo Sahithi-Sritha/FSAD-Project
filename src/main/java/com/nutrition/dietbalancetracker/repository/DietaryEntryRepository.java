@@ -18,4 +18,7 @@ public interface DietaryEntryRepository extends JpaRepository<DietaryEntry, Long
     // Find entries for a user within a date range
     List<DietaryEntry> findByUserIdAndConsumedAtBetweenOrderByConsumedAtDesc(
         Long userId, LocalDateTime start, LocalDateTime end);
+
+    // Delete all dietary entries referencing any of the given food items
+    void deleteByFoodItemIn(java.util.List<com.nutrition.dietbalancetracker.model.FoodItem> foodItems);
 }

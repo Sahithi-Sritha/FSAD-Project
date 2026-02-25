@@ -13,4 +13,7 @@ public interface NutrientProfileRepository extends JpaRepository<NutrientProfile
     
     // Find nutrient profile by food item ID
     Optional<NutrientProfile> findByFoodItemId(Long foodItemId);
+
+    // Delete all nutrient profiles linked to a list of food items
+    void deleteByFoodItemIn(java.util.List<com.nutrition.dietbalancetracker.model.FoodItem> foodItems);
 }

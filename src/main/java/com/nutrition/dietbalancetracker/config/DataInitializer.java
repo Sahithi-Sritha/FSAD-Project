@@ -2,10 +2,12 @@ package com.nutrition.dietbalancetracker.config;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.nutrition.dietbalancetracker.model.FoodCategory;
 import com.nutrition.dietbalancetracker.model.FoodItem;
 import com.nutrition.dietbalancetracker.model.NutrientProfile;
+import com.nutrition.dietbalancetracker.repository.DietaryEntryRepository;
 import com.nutrition.dietbalancetracker.repository.FoodItemRepository;
 import com.nutrition.dietbalancetracker.repository.NutrientProfileRepository;
 
@@ -22,11 +24,25 @@ public class DataInitializer implements CommandLineRunner {
     
     private final FoodItemRepository foodItemRepository;
     private final NutrientProfileRepository nutrientProfileRepository;
+    private final DietaryEntryRepository dietaryEntryRepository;
+
+    // Version flag – bump this whenever the seed list changes so old data is refreshed
+    private static final int SEED_VERSION = 2;
     
     @Override
+    @Transactional
     public void run(String... args) {
-        // Only initialize if database is empty
-        if (foodItemRepository.count() == 0) {
+        // Re-seed when the catalog is empty OR when only old-version system foods exist
+        java.util.List<FoodItem> systemFoods = foodItemRepository.findByIsCustomFalse();
+        boolean needsReseed = systemFoods.isEmpty() || systemFoods.stream().anyMatch(f -> f.getVersion() < SEED_VERSION);
+
+        if (needsReseed) {
+            // Remove old system foods and their related records
+            if (!systemFoods.isEmpty()) {
+                dietaryEntryRepository.deleteByFoodItemIn(systemFoods);
+                nutrientProfileRepository.deleteByFoodItemIn(systemFoods);
+                foodItemRepository.deleteAll(systemFoods);
+            }
             initializeSampleFoods();
         }
     }
@@ -668,7 +684,7 @@ public class DataInitializer implements CommandLineRunner {
         food.setCategory(category);
         food.setIsActive(true);
         food.setIsCustom(false);
-        food.setVersion(1);
+        food.setVersion(SEED_VERSION);
         food = foodItemRepository.save(food);
 
         // Create nutrient profile with real values

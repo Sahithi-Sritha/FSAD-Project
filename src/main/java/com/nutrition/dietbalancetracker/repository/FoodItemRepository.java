@@ -20,4 +20,7 @@ public interface FoodItemRepository extends JpaRepository<FoodItem, Long> {
     
     // Find foods by category
     List<FoodItem> findByCategoryAndIsActiveTrue(FoodCategory category);
+
+    // Find all system-seeded (non-custom) foods
+    List<FoodItem> findByIsCustomFalse();
 }
