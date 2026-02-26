@@ -1,17 +1,25 @@
 package com.nutrition.dietbalancetracker.service;
 
-import com.nutrition.dietbalancetracker.model.DietaryEntry;
-import com.nutrition.dietbalancetracker.repository.DietaryEntryRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.*;
+import com.nutrition.dietbalancetracker.model.DietaryEntry;
+import com.nutrition.dietbalancetracker.repository.DietaryEntryRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * AI SERVICE
@@ -154,7 +162,7 @@ public class AiService {
 
     private String buildSystemPrompt(String dietContext) {
         return """
-                You are NutriBot, a friendly and knowledgeable AI nutrition assistant for the NutriTrack diet balance tracking app.
+                You are NutriBot, a friendly and knowledgeable AI nutrition assistant for the DietSphere diet balance tracking app.
 
                 Your role:
                 - Help users understand their nutrition intake and nutrient gaps

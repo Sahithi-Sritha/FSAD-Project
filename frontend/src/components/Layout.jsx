@@ -32,7 +32,7 @@ function Layout({ user, onLogout, children }) {
             🌿
           </div>
           <div>
-            <h2 className="text-[15px] font-bold text-white leading-tight">NutriTrack</h2>
+            <h2 className="text-[15px] font-bold text-white leading-tight">DietSphere</h2>
             <span className="text-[11px] text-slate-500 uppercase tracking-wider font-medium">Diet Balance</span>
           </div>
         </div>
@@ -122,7 +122,7 @@ function Layout({ user, onLogout, children }) {
           <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300">
             <FiMenu size={20} />
           </button>
-          <span className="text-sm font-bold text-slate-800 dark:text-white">NutriTrack</span>
+          <span className="text-sm font-bold text-slate-800 dark:text-white">DietSphere</span>
           <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-xs font-bold text-brand-700 uppercase">
             {initials}
           </div>

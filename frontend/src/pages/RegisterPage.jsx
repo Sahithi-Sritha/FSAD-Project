@@ -50,7 +50,7 @@ function RegisterPage({ onRegister }) {
             transition={{ delay: 0.15 }}
             className="text-4xl font-extrabold text-white mb-3 tracking-tight"
           >
-            NutriTrack
+            DietSphere
           </motion.h1>
           <motion.p
             initial={{ y: 20, opacity: 0 }}
@@ -89,7 +89,7 @@ function RegisterPage({ onRegister }) {
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center text-2xl mx-auto mb-3 shadow-lg shadow-brand-500/20">
               🌿
             </div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">NutriTrack</h1>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">DietSphere</h1>
           </div>
 
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Create your account</h2>
