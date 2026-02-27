@@ -27,8 +27,10 @@ function App() {
 
   const handleLogin = (userData) => {
     const mapped = { ...userData, id: userData.userId ?? userData.id };
-    setUser(mapped);
+    // Save to localStorage BEFORE setting state to avoid race condition
+    localStorage.setItem('user', JSON.stringify(mapped));
     localStorage.setItem('token', mapped.token);
+    setUser(mapped);
   };
 
   const handleLogout = () => {
