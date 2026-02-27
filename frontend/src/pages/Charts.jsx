@@ -25,7 +25,7 @@ const fadeUp = (i = 0) => ({
 const ChartCard = ({ title, children, delay = 0 }) => (
   <motion.div {...fadeUp(delay)} className="glass-card p-5">
     <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">{title}</h3>
-    <div className="h-64">{children}</div>
+    <div style={{ width: '100%', height: 256 }}>{children}</div>
   </motion.div>
 );
 

@@ -67,8 +67,7 @@ export default function FoodLogging({ user, onLogout }) {
     if (!selected) return;
     setLogging(true);
     try {
-      await api.post('/api/dietary-entries', {
-        userId: user.id,
+      await api.post(`/api/dietary-entries?userId=${user.id}`, {
         foodItemId: selected.id,
         portionSize: portion,
         mealType,
