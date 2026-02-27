@@ -20,9 +20,8 @@ import java.util.stream.Collectors;
  * Handles meal logging, history, and deletion endpoints.
  */
 @RestController
-@RequestMapping("/api/entries")
+@RequestMapping("/api/dietary-entries")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"})
 public class DietaryEntryController {
     
     private final DietaryEntryService dietaryEntryService;
