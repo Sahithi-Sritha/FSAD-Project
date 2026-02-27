@@ -5,7 +5,6 @@ import com.nutrition.dietbalancetracker.model.NutritionGoal;
 import com.nutrition.dietbalancetracker.model.User;
 import com.nutrition.dietbalancetracker.repository.NutritionGoalRepository;
 import com.nutrition.dietbalancetracker.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,11 +16,15 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequestMapping("/api/goals")
-@RequiredArgsConstructor
 public class GoalController {
 
     private final NutritionGoalRepository goalRepository;
     private final UserRepository userRepository;
+
+    public GoalController(NutritionGoalRepository goalRepository, UserRepository userRepository) {
+        this.goalRepository = goalRepository;
+        this.userRepository = userRepository;
+    }
 
     @GetMapping
     public ResponseEntity<NutritionGoalDTO> getGoals(@RequestParam Long userId) {

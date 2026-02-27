@@ -11,7 +11,6 @@ import com.nutrition.dietbalancetracker.repository.NutritionGoalRepository;
 import com.nutrition.dietbalancetracker.repository.UserRepository;
 import com.nutrition.dietbalancetracker.service.UserService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,7 +25,6 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/auth")
-@RequiredArgsConstructor
 public class AuthController {
     
     private final UserService userService;
@@ -34,6 +32,19 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final DietaryEntryRepository dietaryEntryRepository;
     private final NutritionGoalRepository nutritionGoalRepository;
+
+    public AuthController(
+            UserService userService,
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            DietaryEntryRepository dietaryEntryRepository,
+            NutritionGoalRepository nutritionGoalRepository) {
+        this.userService = userService;
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.dietaryEntryRepository = dietaryEntryRepository;
+        this.nutritionGoalRepository = nutritionGoalRepository;
+    }
     
     // POST /api/auth/register
     @PostMapping("/register")

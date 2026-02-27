@@ -1,19 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
 import api from '../services/api';
 import { getFoodEmoji, MEAL_TYPE_CONFIG } from '../utils/foodIcons';
+import { mapDietaryEntries } from '../utils/apiMappers';
 import {
   FiPlus, FiActivity, FiBarChart2, FiMessageSquare,
   FiTrendingUp, FiTarget, FiZap, FiDroplet
 } from 'react-icons/fi';
-
-const fadeUp = (i = 0) => ({
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.45, delay: i * 0.07, ease: [0.4, 0, 0.2, 1] },
-});
 
 export default function Dashboard({ user, onLogout }) {
   const [meals, setMeals] = useState([]);
@@ -27,7 +21,7 @@ export default function Dashboard({ user, onLogout }) {
           api.get(`/api/dietary-entries/today?userId=${user.id}`),
           api.get(`/api/goals?userId=${user.id}`),
         ]);
-        setMeals(mRes.data);
+        setMeals(mapDietaryEntries(mRes.data));
         setGoals(gRes.data);
       } catch { /* silent */ }
       setLoading(false);
@@ -35,7 +29,6 @@ export default function Dashboard({ user, onLogout }) {
     load();
   }, [user.id]);
 
-  /* ── Calculations ─────────────────────────────────── */
   const totals = meals.reduce(
     (t, m) => ({
       calories: t.calories + (m.calories || 0),
@@ -47,15 +40,14 @@ export default function Dashboard({ user, onLogout }) {
     { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 },
   );
 
-  const calGoal  = goals?.dailyCalorieGoal  || 2000;
-  const protGoal = goals?.dailyProteinGoal  || 50;
-  const carbGoal = goals?.dailyCarbGoal     || 300;
-  const fatGoal  = goals?.dailyFatGoal      || 65;
+  const calGoal  = goals?.calorieGoal  || 2000;
+  const protGoal = goals?.proteinGoal  || 50;
+  const carbGoal = goals?.carbsGoal    || 300;
+  const fatGoal  = goals?.fatGoal      || 65;
 
-  const calPct  = Math.min((totals.calories / calGoal) * 100, 100);
+  const calPct   = Math.min((totals.calories / calGoal) * 100, 100);
   const calRemain = Math.max(calGoal - totals.calories, 0);
 
-  /* BMI */
   const bmi = (() => {
     const stored = localStorage.getItem('userBMI');
     if (stored) return parseFloat(stored);
@@ -63,58 +55,39 @@ export default function Dashboard({ user, onLogout }) {
       return +(user.weightKg / ((user.heightCm / 100) ** 2)).toFixed(1);
     return null;
   })();
-  const bmiLabel =
-    bmi < 18.5 ? 'Underweight' : bmi < 25 ? 'Normal' : bmi < 30 ? 'Overweight' : 'Obese';
-  const bmiColor =
-    bmi < 18.5 ? 'text-amber-500' : bmi < 25 ? 'text-emerald-500' : bmi < 30 ? 'text-orange-500' : 'text-rose-500';
-  const bmiBg =
-    bmi < 18.5 ? 'from-amber-500/10 to-amber-500/5' : bmi < 25 ? 'from-emerald-500/10 to-emerald-500/5' : bmi < 30 ? 'from-orange-500/10 to-orange-500/5' : 'from-rose-500/10 to-rose-500/5';
+  const bmiLabel = bmi < 18.5 ? 'Underweight' : bmi < 25 ? 'Normal' : bmi < 30 ? 'Overweight' : 'Obese';
+  const bmiColor = bmi < 18.5 ? 'text-amber-500' : bmi < 25 ? 'text-sage-600' : bmi < 30 ? 'text-orange-500' : 'text-red-500';
 
-  /* Calorie ring SVG params */
   const ringR = 70, ringC = 2 * Math.PI * ringR;
   const ringOffset = ringC - (calPct / 100) * ringC;
 
-  /* Macro bar helper */
-  const MacroBar = ({ label, value, goal, color, icon: Icon }) => {
+  const MacroBar = ({ label, value, goal, color }) => {
     const pct = Math.min((value / goal) * 100, 100);
     return (
       <div className="flex items-center gap-3">
-        <div className={`w-8 h-8 rounded-lg ${color} flex items-center justify-center flex-shrink-0`}>
-          <Icon className="w-4 h-4 text-white" />
+        <span className="w-20 text-xs font-medium text-brown-500">{label}</span>
+        <div className="flex-1 h-2 rounded-full bg-cream-200 overflow-hidden">
+          <div className={`h-full rounded-full ${color} transition-all duration-700`} style={{ width: `${pct}%` }} />
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex justify-between text-xs mb-1">
-            <span className="font-medium text-slate-600 dark:text-slate-300">{label}</span>
-            <span className="text-slate-400">{Math.round(value)}g / {goal}g</span>
-          </div>
-          <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-            <div className="progress-fill h-full rounded-full" style={{ width: `${pct}%`, background: `linear-gradient(90deg, var(--tw-gradient-stops))` }}>
-              <div className={`h-full rounded-full ${color}`} />
-            </div>
-          </div>
-        </div>
+        <span className="w-20 text-right text-xs text-brown-400">{Math.round(value)}g / {goal}g</span>
       </div>
     );
   };
 
-  /* Quick actions */
   const quickActions = [
-    { to: '/nutrition', icon: FiActivity,     label: 'Analysis',  bg: 'from-emerald-500 to-teal-500' },
-    { to: '/ai-chat',   icon: FiMessageSquare, label: 'NutriBot',  bg: 'from-brand-500 to-purple-500' },
-    { to: '/charts',    icon: FiBarChart2,    label: 'Charts',    bg: 'from-amber-500 to-orange-500' },
-    { to: '/goals',     icon: FiTarget,       label: 'Goals',     bg: 'from-rose-500 to-pink-500' },
+    { to: '/nutrition', icon: FiActivity,      label: 'Analysis',  bg: 'bg-sage-500' },
+    { to: '/ai-chat',   icon: FiMessageSquare, label: 'NutriBot',  bg: 'bg-brown-500' },
+    { to: '/charts',    icon: FiBarChart2,     label: 'Charts',    bg: 'bg-sage-600' },
+    { to: '/goals',     icon: FiTarget,        label: 'Goals',     bg: 'bg-brown-400' },
   ];
 
-  /* ── Skeleton ─────────────────────────────────────── */
   if (loading) {
     return (
       <Layout user={user} onLogout={onLogout}>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 animate-pulse">
-          {[1,2,3,4].map(i => (
-            <div key={i} className="h-32 rounded-2xl bg-slate-200/60 dark:bg-slate-800/60" />
-          ))}
-          <div className="md:col-span-2 h-72 rounded-2xl bg-slate-200/60 dark:bg-slate-800/60" />
-          <div className="md:col-span-2 h-72 rounded-2xl bg-slate-200/60 dark:bg-slate-800/60" />
+          {[1,2,3,4].map((i) => <div key={i} className="h-32 rounded-2xl bg-cream-200" />)}
+          <div className="md:col-span-2 h-72 rounded-2xl bg-cream-200" />
+          <div className="md:col-span-2 h-72 rounded-2xl bg-cream-200" />
         </div>
       </Layout>
     );
@@ -122,186 +95,162 @@ export default function Dashboard({ user, onLogout }) {
 
   return (
     <Layout user={user} onLogout={onLogout}>
-      {/* ── Header ──────────────────────────────────── */}
-      <motion.div {...fadeUp(0)} className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
-            Welcome back, <span className="gradient-text">{user.username}</span> 👋
+          <h1 className="text-2xl sm:text-3xl font-bold text-charcoal">
+            Welcome back, <span className="text-sage-600">{user.username}</span> 👋
           </h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Here's your nutrition snapshot for today
-          </p>
+          <p className="mt-1 text-sm text-brown-400">Here's your nutrition snapshot for today</p>
         </div>
         <Link to="/log-food" className="btn-primary self-start sm:self-auto">
           <FiPlus className="w-4 h-4" /> Log Meal
         </Link>
-      </motion.div>
+      </div>
 
-      {/* ── Stat Cards (top row) ────────────────────── */}
+      {/* Stat Cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         {[
-          { label: 'Calories',  value: Math.round(totals.calories), goal: calGoal,  unit: 'kcal', color: 'from-orange-500 to-amber-500',  icon: FiZap },
-          { label: 'Protein',   value: Math.round(totals.protein),  goal: protGoal, unit: 'g',    color: 'from-rose-500 to-pink-500',     icon: FiTrendingUp },
-          { label: 'Carbs',     value: Math.round(totals.carbs),    goal: carbGoal, unit: 'g',    color: 'from-blue-500 to-cyan-500',     icon: FiDroplet },
-          { label: 'Fat',       value: Math.round(totals.fat),      goal: fatGoal,  unit: 'g',    color: 'from-purple-500 to-violet-500', icon: FiTarget },
-        ].map((s, i) => {
+          { label: 'Calories', value: Math.round(totals.calories), goal: calGoal,  unit: 'kcal', icon: FiZap,        bg: 'bg-sage-50',  accent: 'text-sage-600' },
+          { label: 'Protein',  value: Math.round(totals.protein),  goal: protGoal, unit: 'g',    icon: FiTrendingUp, bg: 'bg-cream-100', accent: 'text-brown-500' },
+          { label: 'Carbs',    value: Math.round(totals.carbs),    goal: carbGoal, unit: 'g',    icon: FiDroplet,    bg: 'bg-sage-50',  accent: 'text-sage-600' },
+          { label: 'Fat',      value: Math.round(totals.fat),      goal: fatGoal,  unit: 'g',    icon: FiTarget,     bg: 'bg-cream-100', accent: 'text-brown-500' },
+        ].map((s) => {
           const pct = Math.min((s.value / s.goal) * 100, 100);
           return (
-            <motion.div key={s.label} {...fadeUp(i + 1)} className="glass-card p-4 sm:p-5">
+            <div key={s.label} className="card p-5">
               <div className="flex items-center justify-between mb-3">
-                <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${s.color} flex items-center justify-center shadow-lg`}>
-                  <s.icon className="w-4 h-4 text-white" />
+                <div className={`w-9 h-9 rounded-xl ${s.bg} flex items-center justify-center`}>
+                  <s.icon className={`w-4 h-4 ${s.accent}`} />
                 </div>
-                <span className="text-xs font-semibold text-slate-400">{Math.round(pct)}%</span>
+                <span className="text-xs font-semibold text-brown-300">{Math.round(pct)}%</span>
               </div>
-              <p className="text-2xl font-bold text-slate-900 dark:text-white">{s.value}<span className="text-xs font-normal text-slate-400 ml-1">{s.unit}</span></p>
-              <p className="text-xs text-slate-400 mt-0.5">{s.label} · of {s.goal}{s.unit}</p>
-              <div className="mt-3 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${pct}%` }}
-                  transition={{ duration: 0.8, delay: 0.2 + i * 0.05, ease: [0.4, 0, 0.2, 1] }}
-                  className={`h-full rounded-full bg-gradient-to-r ${s.color}`}
-                />
+              <p className="text-2xl font-bold text-charcoal">{s.value}<span className="text-xs font-normal text-brown-300 ml-1">{s.unit}</span></p>
+              <p className="text-xs text-brown-400 mt-0.5">{s.label} · of {s.goal}{s.unit}</p>
+              <div className="mt-3 h-1.5 rounded-full bg-cream-200 overflow-hidden">
+                <div className="h-full rounded-full bg-sage-500 transition-all duration-700" style={{ width: `${pct}%` }} />
               </div>
-            </motion.div>
+            </div>
           );
         })}
       </div>
 
-      {/* ── Middle Section (ring + macros/bmi) ──────── */}
+      {/* Middle: Ring + Macros */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         {/* Calorie Ring */}
-        <motion.div {...fadeUp(5)} className="glass-card p-6 flex flex-col items-center justify-center lg:col-span-1">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Calorie Budget</p>
+        <div className="card p-6 flex flex-col items-center justify-center lg:col-span-1">
+          <p className="text-xs font-semibold text-brown-400 uppercase tracking-wider mb-4">Calorie Budget</p>
           <div className="relative">
             <svg width="170" height="170" className="transform -rotate-90">
-              <defs>
-                <linearGradient id="calorieGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#6366f1" />
-                  <stop offset="100%" stopColor="#a855f7" />
-                </linearGradient>
-              </defs>
-              <circle cx="85" cy="85" r={ringR} fill="none" strokeWidth="10" className="calorie-ring-bg" />
-              <motion.circle
+              <circle cx="85" cy="85" r={ringR} fill="none" strokeWidth="10" stroke="#ede4d5" />
+              <circle
                 cx="85" cy="85" r={ringR} fill="none" strokeWidth="10"
-                stroke="url(#calorieGradient)"
+                stroke="#5fad7e"
                 strokeLinecap="round"
                 strokeDasharray={ringC}
-                initial={{ strokeDashoffset: ringC }}
-                animate={{ strokeDashoffset: ringOffset }}
-                transition={{ duration: 1.2, ease: [0.4, 0, 0.2, 1] }}
+                strokeDashoffset={ringOffset}
+                style={{ transition: 'stroke-dashoffset 1s ease' }}
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-3xl font-bold text-slate-900 dark:text-white">{Math.round(calPct)}%</span>
-              <span className="text-xs text-slate-400">{calRemain} kcal left</span>
+              <span className="text-3xl font-bold text-charcoal">{Math.round(calPct)}%</span>
+              <span className="text-xs text-brown-400">{calRemain} kcal left</span>
             </div>
           </div>
           <div className="mt-4 flex gap-6 text-center">
             <div>
-              <p className="text-lg font-bold text-slate-900 dark:text-white">{Math.round(totals.calories)}</p>
-              <p className="text-[10px] text-slate-400 uppercase">Consumed</p>
+              <p className="text-lg font-bold text-charcoal">{Math.round(totals.calories)}</p>
+              <p className="text-[10px] text-brown-400 uppercase">Consumed</p>
             </div>
-            <div className="w-px h-8 bg-slate-200 dark:bg-slate-700" />
+            <div className="w-px h-8 bg-cream-200" />
             <div>
-              <p className="text-lg font-bold text-slate-900 dark:text-white">{calGoal}</p>
-              <p className="text-[10px] text-slate-400 uppercase">Goal</p>
+              <p className="text-lg font-bold text-charcoal">{calGoal}</p>
+              <p className="text-[10px] text-brown-400 uppercase">Goal</p>
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Macros + BMI */}
-        <motion.div {...fadeUp(6)} className="glass-card p-6 lg:col-span-2 flex flex-col gap-6">
+        <div className="card p-6 lg:col-span-2 flex flex-col gap-6">
           <div>
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">Macro Breakdown</h3>
+            <h3 className="text-sm font-semibold text-charcoal mb-4">Macro Breakdown</h3>
             <div className="space-y-4">
-              <MacroBar label="Protein" value={totals.protein} goal={protGoal} color="bg-gradient-to-r from-rose-500 to-pink-500" icon={FiTrendingUp} />
-              <MacroBar label="Carbs"   value={totals.carbs}   goal={carbGoal} color="bg-gradient-to-r from-blue-500 to-cyan-500"  icon={FiDroplet} />
-              <MacroBar label="Fat"     value={totals.fat}     goal={fatGoal}  color="bg-gradient-to-r from-purple-500 to-violet-500" icon={FiTarget} />
+              <MacroBar label="Protein" value={totals.protein} goal={protGoal} color="bg-sage-500" />
+              <MacroBar label="Carbs"   value={totals.carbs}   goal={carbGoal} color="bg-brown-400" />
+              <MacroBar label="Fat"     value={totals.fat}     goal={fatGoal}  color="bg-sage-600" />
             </div>
           </div>
 
           {bmi && (
-            <div className={`rounded-xl bg-gradient-to-r ${bmiBg} p-4 flex items-center gap-4`}>
-              <div className="w-14 h-14 rounded-xl bg-white/80 dark:bg-slate-900/50 flex flex-col items-center justify-center">
+            <div className="rounded-xl bg-cream-100 p-4 flex items-center gap-4">
+              <div className="w-14 h-14 rounded-xl bg-white flex flex-col items-center justify-center">
                 <span className={`text-xl font-bold ${bmiColor}`}>{bmi}</span>
-                <span className="text-[9px] text-slate-400 uppercase">BMI</span>
+                <span className="text-[9px] text-brown-400 uppercase">BMI</span>
               </div>
               <div>
                 <p className={`text-sm font-semibold ${bmiColor}`}>{bmiLabel}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <p className="text-xs text-brown-400 mt-0.5">
                   {bmi < 25 ? 'Great job maintaining a healthy weight!' : 'Consider adjusting your nutrition goals'}
                 </p>
               </div>
             </div>
           )}
-        </motion.div>
+        </div>
       </div>
 
-      {/* ── Today's Meals ───────────────────────────── */}
-      <motion.div {...fadeUp(7)} className="glass-card p-6 mb-6">
+      {/* Today's Meals */}
+      <div className="card p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Today's Meals</h3>
-          <Link to="/history" className="text-xs font-medium text-brand-500 hover:text-brand-600 transition-colors">
-            View All →
-          </Link>
+          <h3 className="text-sm font-semibold text-charcoal">Today's Meals</h3>
+          <Link to="/history" className="text-xs font-medium text-sage-600 hover:text-sage-700 transition-colors">View All →</Link>
         </div>
         {meals.length === 0 ? (
           <div className="text-center py-12">
-            <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-3">
-              <FiPlus className="w-6 h-6 text-slate-300 dark:text-slate-600" />
+            <div className="w-16 h-16 rounded-2xl bg-cream-100 flex items-center justify-center mx-auto mb-3">
+              <FiPlus className="w-6 h-6 text-cream-300" />
             </div>
-            <p className="text-sm text-slate-400">No meals logged yet today</p>
-            <Link to="/log-food" className="btn-primary mt-4 text-xs px-4 py-2">Log your first meal</Link>
+            <p className="text-sm text-brown-400">No meals logged yet today</p>
+            <Link to="/log-food" className="btn-primary mt-4 text-xs px-4 py-2 inline-flex">Log your first meal</Link>
           </div>
         ) : (
           <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory -mx-1 px-1">
             {meals.map((m) => {
               const cfg = MEAL_TYPE_CONFIG[m.mealType] || MEAL_TYPE_CONFIG.SNACK;
               return (
-                <div
-                  key={m.id}
-                  className="snap-start flex-shrink-0 w-40 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/40 hover:shadow-md transition-all"
-                >
+                <div key={m.id} className="snap-start flex-shrink-0 w-40 p-4 rounded-xl bg-cream-50 border border-cream-200 hover:shadow-soft transition-all">
                   <div className="text-2xl mb-2">{getFoodEmoji(m.foodName)}</div>
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{m.foodName}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">{m.portionSize}g</p>
+                  <p className="text-sm font-semibold text-charcoal truncate">{m.foodName}</p>
+                  <p className="text-xs text-brown-300 mt-0.5">{m.portionSize}g</p>
                   <div className="mt-2 flex items-center gap-1.5">
                     <span className="text-xs">{cfg.emoji}</span>
-                    <span className="text-xs text-slate-400">{cfg.label}</span>
+                    <span className="text-xs text-brown-300">{cfg.label}</span>
                   </div>
-                  <p className="text-sm font-bold text-brand-600 dark:text-brand-400 mt-1">{Math.round(m.calories)} kcal</p>
+                  <p className="text-sm font-bold text-sage-600 mt-1">{Math.round(m.calories)} kcal</p>
                 </div>
               );
             })}
-            {/* Add card */}
             <Link
               to="/log-food"
-              className="snap-start flex-shrink-0 w-40 p-4 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center text-slate-400 hover:text-brand-500 hover:border-brand-300 dark:hover:border-brand-600 transition-all"
+              className="snap-start flex-shrink-0 w-40 p-4 rounded-xl border-2 border-dashed border-cream-300 flex flex-col items-center justify-center text-brown-300 hover:text-sage-500 hover:border-sage-300 transition-all"
             >
               <FiPlus className="w-6 h-6 mb-1" />
               <span className="text-xs font-medium">Add Meal</span>
             </Link>
           </div>
         )}
-      </motion.div>
+      </div>
 
-      {/* ── Quick Actions ───────────────────────────── */}
-      <motion.div {...fadeUp(8)} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* Quick Actions */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {quickActions.map((a) => (
-          <Link
-            key={a.to}
-            to={a.to}
-            className="glass-card-hover p-4 flex flex-col items-center gap-3 text-center group"
-          >
-            <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${a.bg} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
+          <Link key={a.to} to={a.to} className="card p-4 flex flex-col items-center gap-3 text-center hover:shadow-soft transition-shadow">
+            <div className={`w-11 h-11 rounded-xl ${a.bg} flex items-center justify-center`}>
               <a.icon className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{a.label}</span>
+            <span className="text-xs font-semibold text-brown-500">{a.label}</span>
           </Link>
         ))}
-      </motion.div>
+      </div>
     </Layout>
   );
 }

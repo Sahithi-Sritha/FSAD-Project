@@ -1,66 +1,102 @@
 import { useState, useEffect, useMemo } from 'react';
-import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Layout from '../components/Layout';
 import api from '../services/api';
-import { FiSave, FiTarget, FiZap, FiRefreshCw } from 'react-icons/fi';
+import { FiSave, FiTarget, FiRefreshCw } from 'react-icons/fi';
 
 const PRESETS = [
   {
     name: 'Weight Loss',
     emoji: '🔥',
     desc: 'Lower calories, moderate protein',
-    color: 'from-orange-500 to-amber-500',
-    goals: { dailyCalorieGoal: 1500, dailyProteinGoal: 60, dailyCarbGoal: 180, dailyFatGoal: 45, dailyFiberGoal: 30 },
+    bg: 'bg-brown-400',
+    goals: { calorieGoal: 1500, proteinGoal: 60, carbsGoal: 180, fatGoal: 45, fiberGoal: 30 },
   },
   {
     name: 'Maintenance',
     emoji: '⚖️',
     desc: 'Balanced macro distribution',
-    color: 'from-brand-500 to-purple-500',
-    goals: { dailyCalorieGoal: 2000, dailyProteinGoal: 50, dailyCarbGoal: 250, dailyFatGoal: 65, dailyFiberGoal: 25 },
+    bg: 'bg-sage-500',
+    goals: { calorieGoal: 2000, proteinGoal: 50, carbsGoal: 250, fatGoal: 65, fiberGoal: 25 },
   },
   {
     name: 'Muscle Building',
     emoji: '💪',
     desc: 'High protein, higher calories',
-    color: 'from-rose-500 to-pink-500',
-    goals: { dailyCalorieGoal: 2500, dailyProteinGoal: 100, dailyCarbGoal: 300, dailyFatGoal: 80, dailyFiberGoal: 30 },
+    bg: 'bg-brown-500',
+    goals: { calorieGoal: 2500, proteinGoal: 100, carbsGoal: 300, fatGoal: 80, fiberGoal: 30 },
   },
   {
     name: 'Balanced Indian',
     emoji: '🍛',
     desc: 'Traditional balanced Indian diet',
-    color: 'from-emerald-500 to-teal-500',
-    goals: { dailyCalorieGoal: 2000, dailyProteinGoal: 55, dailyCarbGoal: 270, dailyFatGoal: 60, dailyFiberGoal: 32 },
+    bg: 'bg-sage-600',
+    goals: { calorieGoal: 2000, proteinGoal: 55, carbsGoal: 270, fatGoal: 60, fiberGoal: 32 },
   },
 ];
 
 const GOAL_FIELDS = [
-  { key: 'dailyCalorieGoal', label: 'Calories',  unit: 'kcal', min: 800, max: 5000, step: 50,  color: 'from-orange-500 to-amber-500'  },
-  { key: 'dailyProteinGoal', label: 'Protein',   unit: 'g',    min: 10,  max: 200,  step: 5,   color: 'from-rose-500 to-pink-500'     },
-  { key: 'dailyCarbGoal',    label: 'Carbs',     unit: 'g',    min: 50,  max: 500,  step: 10,  color: 'from-blue-500 to-cyan-500'     },
-  { key: 'dailyFatGoal',     label: 'Fat',       unit: 'g',    min: 10,  max: 200,  step: 5,   color: 'from-purple-500 to-violet-500' },
-  { key: 'dailyFiberGoal',   label: 'Fiber',     unit: 'g',    min: 5,   max: 80,   step: 1,   color: 'from-emerald-500 to-teal-500'  },
+  { key: 'calorieGoal', label: 'Calories',  unit: 'kcal', min: 800, max: 5000, step: 50,  color: 'bg-brown-400'  },
+  { key: 'proteinGoal', label: 'Protein',   unit: 'g',    min: 10,  max: 200,  step: 5,   color: 'bg-sage-500'   },
+  { key: 'carbsGoal',   label: 'Carbs',     unit: 'g',    min: 50,  max: 500,  step: 10,  color: 'bg-brown-500'  },
+  { key: 'fatGoal',     label: 'Fat',       unit: 'g',    min: 10,  max: 200,  step: 5,   color: 'bg-sage-600'   },
+  { key: 'fiberGoal',   label: 'Fiber',     unit: 'g',    min: 5,   max: 80,   step: 1,   color: 'bg-sage-400'   },
 ];
-
-const fadeUp = (i = 0) => ({
-  initial: { opacity: 0, y: 16 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.4, delay: i * 0.06 },
-});
 
 export default function GoalSettings({ user, onLogout }) {
   const [goals, setGoals] = useState({
-    dailyCalorieGoal: 2000,
-    dailyProteinGoal: 50,
-    dailyCarbGoal: 250,
-    dailyFatGoal: 65,
-    dailyFiberGoal: 25,
+    calorieGoal: 2000,
+    proteinGoal: 50,
+    carbsGoal: 250,
+    fatGoal: 65,
+    fiberGoal: 25,
   });
   const [original, setOriginal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const bmi = useMemo(() => {
+    if (user?.weightKg && user?.heightCm) {
+      const v = user.weightKg / ((user.heightCm / 100) ** 2);
+      return Number.isFinite(v) ? parseFloat(v.toFixed(1)) : null;
+    }
+    const stored = localStorage.getItem('userBMI');
+    return stored ? parseFloat(stored) : null;
+  }, [user?.weightKg, user?.heightCm]);
+
+  const bmiSuggestion = useMemo(() => {
+    if (!bmi) return null;
+    if (bmi < 18.5) {
+      return {
+        label: 'Underweight focus',
+        note: 'Boost calories and protein to support healthy weight gain.',
+        goals: { calorieGoal: 2400, proteinGoal: 90, carbsGoal: 320, fatGoal: 80, fiberGoal: 28 },
+        bg: 'bg-brown-400',
+      };
+    }
+    if (bmi < 25) {
+      return {
+        label: 'Maintenance focus',
+        note: 'Balanced macros to maintain weight and energy.',
+        goals: { calorieGoal: 2000, proteinGoal: 70, carbsGoal: 260, fatGoal: 65, fiberGoal: 28 },
+        bg: 'bg-sage-500',
+      };
+    }
+    if (bmi < 30) {
+      return {
+        label: 'Fat-loss focus',
+        note: 'Slight calorie reduction with higher protein and fiber.',
+        goals: { calorieGoal: 1700, proteinGoal: 95, carbsGoal: 190, fatGoal: 55, fiberGoal: 32 },
+        bg: 'bg-brown-500',
+      };
+    }
+    return {
+      label: 'Metabolic reset',
+      note: 'Lower carbs, higher protein and fiber for satiety.',
+      goals: { calorieGoal: 1500, proteinGoal: 110, carbsGoal: 160, fatGoal: 50, fiberGoal: 35 },
+      bg: 'bg-sage-600',
+    };
+  }, [bmi]);
 
   useEffect(() => {
     api.get(`/api/goals?userId=${user.id}`)
@@ -100,66 +136,81 @@ export default function GoalSettings({ user, onLogout }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Nutrition Goals</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Set daily targets for your macros and calories
-          </p>
+          <h1 className="text-2xl font-bold text-charcoal">Nutrition Goals</h1>
+          <p className="text-sm text-brown-400 mt-1">Set daily targets for your macros and calories</p>
         </div>
         {isDirty && (
-          <motion.button
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            onClick={handleSave}
-            disabled={saving}
-            className="btn-primary self-start"
-          >
+          <button onClick={handleSave} disabled={saving} className="btn-primary self-start">
             {saving ? (
               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
               <><FiSave className="w-4 h-4" /> Save Goals</>
             )}
-          </motion.button>
+          </button>
         )}
       </div>
 
       {/* Loading */}
       {loading && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-pulse">
-          {[1,2,3,4].map(i => <div key={i} className="h-28 rounded-2xl bg-slate-200/60 dark:bg-slate-800/60" />)}
+          {[1,2,3,4].map(i => <div key={i} className="h-28 rounded-2xl bg-cream-200" />)}
         </div>
       )}
 
       {!loading && (
         <>
+          {bmiSuggestion && (
+            <div className="card p-6 mb-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className={`w-10 h-10 rounded-xl ${bmiSuggestion.bg} flex items-center justify-center text-white text-lg`}>
+                  <FiTarget className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-xs text-brown-400">Based on your BMI {bmi}</p>
+                  <p className="text-sm font-semibold text-charcoal">{bmiSuggestion.label}</p>
+                </div>
+              </div>
+              <p className="text-xs text-brown-400 mb-4">{bmiSuggestion.note}</p>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px] text-brown-400 mb-4">
+                {GOAL_FIELDS.map((f) => (
+                  <div key={f.key} className="px-2 py-2 rounded-lg bg-cream-100">
+                    <p className="text-brown-300">{f.label}</p>
+                    <p className="font-semibold text-charcoal">{bmiSuggestion.goals[f.key]}{f.unit}</p>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => setGoals({ ...goals, ...bmiSuggestion.goals })} className="btn-primary text-sm">
+                Apply BMI Suggestion
+              </button>
+            </div>
+          )}
+
           {/* Presets */}
-          <motion.div {...fadeUp(0)} className="mb-8">
-            <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Quick Presets</h3>
+          <div className="mb-8">
+            <h3 className="text-xs font-semibold text-brown-400 uppercase tracking-wider mb-3">Quick Presets</h3>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {PRESETS.map((preset) => (
                 <button
                   key={preset.name}
                   onClick={() => applyPreset(preset)}
-                  className="glass-card-hover p-4 text-left group"
+                  className="card p-4 text-left hover:shadow-soft transition-shadow"
                 >
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${preset.color} flex items-center justify-center mb-3 shadow-lg group-hover:scale-110 transition-transform`}>
+                  <div className={`w-10 h-10 rounded-xl ${preset.bg} flex items-center justify-center mb-3`}>
                     <span className="text-lg">{preset.emoji}</span>
                   </div>
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white">{preset.name}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">{preset.desc}</p>
+                  <p className="text-sm font-semibold text-charcoal">{preset.name}</p>
+                  <p className="text-xs text-brown-400 mt-0.5">{preset.desc}</p>
                 </button>
               ))}
             </div>
-          </motion.div>
+          </div>
 
           {/* Goal Sliders */}
-          <motion.div {...fadeUp(1)} className="glass-card p-6">
+          <div className="card p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Custom Goals</h3>
+              <h3 className="text-sm font-semibold text-charcoal">Custom Goals</h3>
               {isDirty && (
-                <button
-                  onClick={() => setGoals(original)}
-                  className="btn-ghost text-xs text-slate-400"
-                >
+                <button onClick={() => setGoals(original)} className="btn-ghost text-xs text-brown-400">
                   <FiRefreshCw className="w-3.5 h-3.5" /> Reset
                 </button>
               )}
@@ -172,8 +223,8 @@ export default function GoalSettings({ user, onLogout }) {
                   <div key={field.key}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <div className={`w-2.5 h-2.5 rounded-full bg-gradient-to-r ${field.color}`} />
-                        <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{field.label}</span>
+                        <div className={`w-2.5 h-2.5 rounded-full ${field.color}`} />
+                        <span className="text-sm font-medium text-charcoal">{field.label}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <input
@@ -183,9 +234,9 @@ export default function GoalSettings({ user, onLogout }) {
                             const v = parseInt(e.target.value) || field.min;
                             setGoals({ ...goals, [field.key]: Math.min(field.max, Math.max(field.min, v)) });
                           }}
-                          className="w-20 text-right text-sm font-bold text-slate-900 dark:text-white bg-transparent border-none focus:ring-0 p-0"
+                          className="w-20 text-right text-sm font-bold text-charcoal bg-transparent border-none focus:ring-0 p-0"
                         />
-                        <span className="text-xs text-slate-400">{field.unit}</span>
+                        <span className="text-xs text-brown-400">{field.unit}</span>
                       </div>
                     </div>
                     <div className="relative">
@@ -200,12 +251,12 @@ export default function GoalSettings({ user, onLogout }) {
                       />
                       <div className="absolute top-0 left-0 h-2 rounded-full pointer-events-none overflow-hidden" style={{ width: '100%' }}>
                         <div
-                          className={`h-full rounded-full bg-gradient-to-r ${field.color} transition-all duration-200`}
+                          className={`h-full rounded-full ${field.color} transition-all duration-200`}
                           style={{ width: `${pct}%` }}
                         />
                       </div>
                     </div>
-                    <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+                    <div className="flex justify-between text-[10px] text-brown-300 mt-1">
                       <span>{field.min} {field.unit}</span>
                       <span>{field.max} {field.unit}</span>
                     </div>
@@ -215,11 +266,7 @@ export default function GoalSettings({ user, onLogout }) {
             </div>
 
             {isDirty && (
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800"
-              >
+              <div className="mt-6 pt-6 border-t border-cream-200">
                 <button onClick={handleSave} disabled={saving} className="btn-primary w-full py-3 text-sm">
                   {saving ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -227,9 +274,9 @@ export default function GoalSettings({ user, onLogout }) {
                     <><FiSave className="w-4 h-4" /> Save Goals</>
                   )}
                 </button>
-              </motion.div>
+              </div>
             )}
-          </motion.div>
+          </div>
         </>
       )}
     </Layout>
