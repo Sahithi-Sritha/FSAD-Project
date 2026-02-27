@@ -12,7 +12,7 @@ import {
   FiSearch, FiPlus, FiMinus, FiCheck, FiX, FiClock
 } from 'react-icons/fi';
 
-const CATEGORIES = ['ALL', ...Object.keys(CATEGORY_CONFIG)];
+const CATEGORIES = Object.keys(CATEGORY_CONFIG);
 
 function getMealSuggestion() {
   const h = new Date().getHours();
@@ -121,8 +121,8 @@ export default function FoodLogging({ user, onLogout }) {
                       : 'bg-white dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-brand-300 dark:hover:border-brand-700'}
                   `}
                 >
-                  <span>{c === 'ALL' ? '🍽️' : getCategoryEmoji(c)}</span>
-                  {c === 'ALL' ? 'All' : getCategoryLabel(c)}
+                  <span>{getCategoryEmoji(c)}</span>
+                  {getCategoryLabel(c)}
                 </button>
               );
             })}

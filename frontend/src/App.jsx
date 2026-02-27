@@ -26,8 +26,9 @@ function App() {
   }, [user]);
 
   const handleLogin = (userData) => {
-    setUser(userData);
-    localStorage.setItem('token', userData.token);
+    const mapped = { ...userData, id: userData.userId ?? userData.id };
+    setUser(mapped);
+    localStorage.setItem('token', mapped.token);
   };
 
   const handleLogout = () => {
