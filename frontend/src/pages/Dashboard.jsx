@@ -1,346 +1,307 @@
-import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { FiPlus, FiTrendingUp, FiBarChart2, FiClock, FiArrowRight } from 'react-icons/fi'
-import api from '../services/api'
-import Layout from '../components/Layout'
-import { getFoodEmoji, MEAL_TYPE_CONFIG } from '../utils/foodIcons'
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import Layout from '../components/Layout';
+import api from '../services/api';
+import { getFoodEmoji, MEAL_TYPE_CONFIG } from '../utils/foodIcons';
+import {
+  FiPlus, FiActivity, FiBarChart2, FiMessageSquare,
+  FiTrendingUp, FiTarget, FiZap, FiDroplet
+} from 'react-icons/fi';
 
-function Dashboard({ user, onLogout }) {
-  const [todaysMeals, setTodaysMeals] = useState([])
-  const [totalCalories, setTotalCalories] = useState(0)
-  const [macros, setMacros] = useState({ protein: 0, carbs: 0, fat: 0 })
-  const [loading, setLoading] = useState(true)
-  const [goals, setGoals] = useState({ calorieGoal: 2000, proteinGoal: 50, carbsGoal: 300, fatGoal: 65 })
+const fadeUp = (i = 0) => ({
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.45, delay: i * 0.07, ease: [0.4, 0, 0.2, 1] },
+});
 
-  useEffect(() => { fetchTodaysMeals(); fetchGoals() }, [])
+export default function Dashboard({ user, onLogout }) {
+  const [meals, setMeals] = useState([]);
+  const [goals, setGoals] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const fetchGoals = async () => {
-    try {
-      const res = await api.get(`/api/goals?userId=${user.userId}`)
-      setGoals(res.data)
-    } catch (err) { console.error('Error fetching goals:', err) }
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [mRes, gRes] = await Promise.all([
+          api.get(`/api/dietary-entries/today?userId=${user.id}`),
+          api.get(`/api/goals?userId=${user.id}`),
+        ]);
+        setMeals(mRes.data);
+        setGoals(gRes.data);
+      } catch { /* silent */ }
+      setLoading(false);
+    };
+    load();
+  }, [user.id]);
+
+  /* ── Calculations ─────────────────────────────────── */
+  const totals = meals.reduce(
+    (t, m) => ({
+      calories: t.calories + (m.calories || 0),
+      protein:  t.protein  + (m.protein  || 0),
+      carbs:    t.carbs    + (m.carbs    || 0),
+      fat:      t.fat      + (m.fat      || 0),
+      fiber:    t.fiber    + (m.fiber    || 0),
+    }),
+    { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+  );
+
+  const calGoal  = goals?.dailyCalorieGoal  || 2000;
+  const protGoal = goals?.dailyProteinGoal  || 50;
+  const carbGoal = goals?.dailyCarbGoal     || 300;
+  const fatGoal  = goals?.dailyFatGoal      || 65;
+
+  const calPct  = Math.min((totals.calories / calGoal) * 100, 100);
+  const calRemain = Math.max(calGoal - totals.calories, 0);
+
+  /* BMI */
+  const bmi = (() => {
+    const stored = localStorage.getItem('userBMI');
+    if (stored) return parseFloat(stored);
+    if (user.weightKg && user.heightCm)
+      return +(user.weightKg / ((user.heightCm / 100) ** 2)).toFixed(1);
+    return null;
+  })();
+  const bmiLabel =
+    bmi < 18.5 ? 'Underweight' : bmi < 25 ? 'Normal' : bmi < 30 ? 'Overweight' : 'Obese';
+  const bmiColor =
+    bmi < 18.5 ? 'text-amber-500' : bmi < 25 ? 'text-emerald-500' : bmi < 30 ? 'text-orange-500' : 'text-rose-500';
+  const bmiBg =
+    bmi < 18.5 ? 'from-amber-500/10 to-amber-500/5' : bmi < 25 ? 'from-emerald-500/10 to-emerald-500/5' : bmi < 30 ? 'from-orange-500/10 to-orange-500/5' : 'from-rose-500/10 to-rose-500/5';
+
+  /* Calorie ring SVG params */
+  const ringR = 70, ringC = 2 * Math.PI * ringR;
+  const ringOffset = ringC - (calPct / 100) * ringC;
+
+  /* Macro bar helper */
+  const MacroBar = ({ label, value, goal, color, icon: Icon }) => {
+    const pct = Math.min((value / goal) * 100, 100);
+    return (
+      <div className="flex items-center gap-3">
+        <div className={`w-8 h-8 rounded-lg ${color} flex items-center justify-center flex-shrink-0`}>
+          <Icon className="w-4 h-4 text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between text-xs mb-1">
+            <span className="font-medium text-slate-600 dark:text-slate-300">{label}</span>
+            <span className="text-slate-400">{Math.round(value)}g / {goal}g</span>
+          </div>
+          <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+            <div className="progress-fill h-full rounded-full" style={{ width: `${pct}%`, background: `linear-gradient(90deg, var(--tw-gradient-stops))` }}>
+              <div className={`h-full rounded-full ${color}`} />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  /* Quick actions */
+  const quickActions = [
+    { to: '/nutrition', icon: FiActivity,     label: 'Analysis',  bg: 'from-emerald-500 to-teal-500' },
+    { to: '/ai-chat',   icon: FiMessageSquare, label: 'NutriBot',  bg: 'from-brand-500 to-purple-500' },
+    { to: '/charts',    icon: FiBarChart2,    label: 'Charts',    bg: 'from-amber-500 to-orange-500' },
+    { to: '/goals',     icon: FiTarget,       label: 'Goals',     bg: 'from-rose-500 to-pink-500' },
+  ];
+
+  /* ── Skeleton ─────────────────────────────────────── */
+  if (loading) {
+    return (
+      <Layout user={user} onLogout={onLogout}>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 animate-pulse">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="h-32 rounded-2xl bg-slate-200/60 dark:bg-slate-800/60" />
+          ))}
+          <div className="md:col-span-2 h-72 rounded-2xl bg-slate-200/60 dark:bg-slate-800/60" />
+          <div className="md:col-span-2 h-72 rounded-2xl bg-slate-200/60 dark:bg-slate-800/60" />
+        </div>
+      </Layout>
+    );
   }
-
-  const fetchTodaysMeals = async () => {
-    try {
-      const response = await api.get(`/api/entries/today?userId=${user.userId}`)
-      setTodaysMeals(response.data)
-      let cals = 0, protein = 0, carbs = 0, fat = 0
-      response.data.forEach(entry => {
-        const p = entry.portionSize || 1
-        const np = entry.foodItem?.nutrientProfile
-        if (np) {
-          cals += (np.calories || 0) * p
-          protein += (np.protein || 0) * p
-          carbs += (np.carbohydrates || 0) * p
-          fat += (np.fat || 0) * p
-        }
-      })
-      setTotalCalories(Math.round(cals))
-      setMacros({ protein: Math.round(protein), carbs: Math.round(carbs), fat: Math.round(fat) })
-    } catch (err) {
-      console.error('Error fetching meals:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const calorieGoal = goals.calorieGoal || 2000
-  const proteinGoal = goals.proteinGoal || 50
-  const carbsGoal = goals.carbsGoal || 300
-  const fatGoal = goals.fatGoal || 65
-  const caloriePercent = Math.min(Math.round((totalCalories / calorieGoal) * 100), 100)
-
-  const radius = 70
-  const circumference = 2 * Math.PI * radius
-  const strokeDashoffset = circumference - (caloriePercent / 100) * circumference
-
-  const getGreeting = () => {
-    const hour = new Date().getHours()
-    if (hour < 12) return 'Good morning'
-    if (hour < 17) return 'Good afternoon'
-    return 'Good evening'
-  }
-
-  const statCards = [
-    { label: 'Calories', value: totalCalories, unit: 'kcal', goal: calorieGoal, emoji: '🔥', gradient: 'from-amber-500 to-orange-500', bg: 'bg-amber-50', text: 'text-amber-600' },
-    { label: 'Protein', value: macros.protein, unit: 'g', goal: proteinGoal, emoji: '🥩', gradient: 'from-rose-500 to-pink-500', bg: 'bg-rose-50', text: 'text-rose-600' },
-    { label: 'Carbs', value: macros.carbs, unit: 'g', goal: carbsGoal, emoji: '🌾', gradient: 'from-blue-500 to-indigo-500', bg: 'bg-blue-50', text: 'text-blue-600' },
-    { label: 'Fats', value: macros.fat, unit: 'g', goal: fatGoal, emoji: '💧', gradient: 'from-purple-500 to-violet-500', bg: 'bg-purple-50', text: 'text-purple-600' },
-  ]
-
-  const macroData = [
-    { name: 'Protein', value: macros.protein, goal: proteinGoal, color: '#e11d48', bg: 'bg-rose-100' },
-    { name: 'Carbs', value: macros.carbs, goal: carbsGoal, color: '#3b82f6', bg: 'bg-blue-100' },
-    { name: 'Fats', value: macros.fat, goal: fatGoal, color: '#8b5cf6', bg: 'bg-purple-100' },
-  ]
 
   return (
     <Layout user={user} onLogout={onLogout}>
-      {/* Greeting */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+      {/* ── Header ──────────────────────────────────── */}
+      <motion.div {...fadeUp(0)} className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-            {getGreeting()}, {user?.username} 👋
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
+            Welcome back, <span className="gradient-text">{user.username}</span> 👋
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">Here&rsquo;s your nutrition summary for today</p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Here's your nutrition snapshot for today
+          </p>
         </div>
-        <Link to="/log-food">
-          <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-purple-600 text-white font-semibold text-sm hover:shadow-lg hover:shadow-brand-500/25 transition-all duration-200">
-            <FiPlus size={16} /> Log Meal
-          </button>
+        <Link to="/log-food" className="btn-primary self-start sm:self-auto">
+          <FiPlus className="w-4 h-4" /> Log Meal
         </Link>
-      </div>
+      </motion.div>
 
-      {/* BMI Badge */}
-      {user?.bmi && (
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.08 }}
-          className="mb-6 bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-between"
-        >
-          <div className="flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold
-              ${user.bmiCategory === 'Normal weight' ? 'bg-emerald-50 text-emerald-600'
-              : user.bmiCategory === 'Underweight' ? 'bg-amber-50 text-amber-600'
-              : user.bmiCategory === 'Overweight' ? 'bg-orange-50 text-orange-600'
-              : 'bg-red-50 text-red-600'}`}>
-              {Number(user.bmi).toFixed(1)}
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Your BMI</p>
-              <p className={`text-sm font-bold mt-0.5
-                ${user.bmiCategory === 'Normal weight' ? 'text-emerald-600'
-                : user.bmiCategory === 'Underweight' ? 'text-amber-600'
-                : user.bmiCategory === 'Overweight' ? 'text-orange-600'
-                : 'text-red-600'}`}>
-                {user.bmiCategory}
-              </p>
-            </div>
-          </div>
-          <div className="text-right">
-            <p className="text-[11px] text-slate-400">Nutrient targets are adjusted for your BMI</p>
-            <Link to="/profile" className="text-xs font-semibold text-brand-600 hover:text-brand-700 transition-colors">
-              Update profile →
-            </Link>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
-        {statCards.map((stat, i) => {
-          const pct = Math.min(Math.round((stat.value / stat.goal) * 100), 100)
+      {/* ── Stat Cards (top row) ────────────────────── */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+        {[
+          { label: 'Calories',  value: Math.round(totals.calories), goal: calGoal,  unit: 'kcal', color: 'from-orange-500 to-amber-500',  icon: FiZap },
+          { label: 'Protein',   value: Math.round(totals.protein),  goal: protGoal, unit: 'g',    color: 'from-rose-500 to-pink-500',     icon: FiTrendingUp },
+          { label: 'Carbs',     value: Math.round(totals.carbs),    goal: carbGoal, unit: 'g',    color: 'from-blue-500 to-cyan-500',     icon: FiDroplet },
+          { label: 'Fat',       value: Math.round(totals.fat),      goal: fatGoal,  unit: 'g',    color: 'from-purple-500 to-violet-500', icon: FiTarget },
+        ].map((s, i) => {
+          const pct = Math.min((s.value / s.goal) * 100, 100);
           return (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.08 }}
-              className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-200"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{stat.label}</p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-                    {stat.value}<span className="text-sm font-medium text-slate-400 ml-1">{stat.unit}</span>
-                  </p>
-                  <p className="text-xs text-slate-400 mt-0.5">of {stat.goal}{stat.unit}</p>
+            <motion.div key={s.label} {...fadeUp(i + 1)} className="glass-card p-4 sm:p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${s.color} flex items-center justify-center shadow-lg`}>
+                  <s.icon className="w-4 h-4 text-white" />
                 </div>
-                <div className={`w-11 h-11 rounded-xl ${stat.bg} flex items-center justify-center text-lg`}>
-                  {stat.emoji}
-                </div>
+                <span className="text-xs font-semibold text-slate-400">{Math.round(pct)}%</span>
               </div>
-              <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">{s.value}<span className="text-xs font-normal text-slate-400 ml-1">{s.unit}</span></p>
+              <p className="text-xs text-slate-400 mt-0.5">{s.label} · of {s.goal}{s.unit}</p>
+              <div className="mt-3 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                 <motion.div
-                  className={`h-full rounded-full bg-gradient-to-r ${stat.gradient}`}
                   initial={{ width: 0 }}
                   animate={{ width: `${pct}%` }}
-                  transition={{ duration: 0.8, delay: i * 0.08 }}
+                  transition={{ duration: 0.8, delay: 0.2 + i * 0.05, ease: [0.4, 0, 0.2, 1] }}
+                  className={`h-full rounded-full bg-gradient-to-r ${s.color}`}
                 />
               </div>
             </motion.div>
-          )
+          );
         })}
       </div>
 
-      {/* Two-Column: Macros + Calorie Ring */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Macro Breakdown */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-          className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-100 dark:border-slate-800 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h3 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                <FiBarChart2 size={16} className="text-brand-500" />Macro Breakdown
-              </h3>
-              <p className="text-xs text-slate-400 mt-0.5">Daily nutrient targets</p>
-            </div>
-          </div>
-          <div className="space-y-5">
-            {macroData.map(({ name, value, goal, color, bg }) => {
-              const pct = Math.min(Math.round((value / goal) * 100), 100)
-              return (
-                <div key={name}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full" style={{ background: color }} />
-                      {name}
-                    </span>
-                    <span className="text-xs text-slate-400 font-medium">{value}g / {goal}g</span>
-                  </div>
-                  <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <motion.div
-                      className="h-full rounded-full"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${pct}%` }}
-                      transition={{ duration: 0.8 }}
-                      style={{ backgroundColor: color }}
-                    />
-                  </div>
-                  <div className="flex justify-between mt-1.5">
-                    <span className="text-[11px] font-semibold" style={{ color }}>
-                      {pct >= 90 ? 'On track' : pct >= 50 ? 'Getting there' : 'Need more'}
-                    </span>
-                    <span className="text-[11px] text-slate-400">{pct}%</span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </motion.div>
-
+      {/* ── Middle Section (ring + macros/bmi) ──────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         {/* Calorie Ring */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col items-center"
-        >
-          <div className="w-full mb-4">
-            <h3 className="text-base font-semibold text-slate-900 dark:text-white">Calorie Progress</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Track your daily calorie goal</p>
-          </div>
-
-          <div className="relative" style={{ width: 180, height: 180 }}>
-            <svg viewBox="0 0 180 180" className="w-full h-full" style={{ transform: 'rotate(-90deg)' }}>
-              <circle className="calorie-ring-bg" cx="90" cy="90" r={radius} />
+        <motion.div {...fadeUp(5)} className="glass-card p-6 flex flex-col items-center justify-center lg:col-span-1">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Calorie Budget</p>
+          <div className="relative">
+            <svg width="170" height="170" className="transform -rotate-90">
+              <defs>
+                <linearGradient id="calorieGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#6366f1" />
+                  <stop offset="100%" stopColor="#a855f7" />
+                </linearGradient>
+              </defs>
+              <circle cx="85" cy="85" r={ringR} fill="none" strokeWidth="10" className="calorie-ring-bg" />
               <motion.circle
-                className="calorie-ring-fill"
-                cx="90" cy="90" r={radius}
-                stroke={caloriePercent >= 90 ? '#059669' : caloriePercent >= 50 ? '#6366f1' : '#14b8a6'}
-                strokeDasharray={circumference}
-                initial={{ strokeDashoffset: circumference }}
-                animate={{ strokeDashoffset }}
-                transition={{ duration: 1.2, ease: 'easeOut' }}
+                cx="85" cy="85" r={ringR} fill="none" strokeWidth="10"
+                stroke="url(#calorieGradient)"
+                strokeLinecap="round"
+                strokeDasharray={ringC}
+                initial={{ strokeDashoffset: ringC }}
+                animate={{ strokeDashoffset: ringOffset }}
+                transition={{ duration: 1.2, ease: [0.4, 0, 0.2, 1] }}
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-3xl font-extrabold text-slate-900 dark:text-white">{caloriePercent}%</span>
-              <span className="text-xs text-slate-400">of goal</span>
+              <span className="text-3xl font-bold text-slate-900 dark:text-white">{Math.round(calPct)}%</span>
+              <span className="text-xs text-slate-400">{calRemain} kcal left</span>
+            </div>
+          </div>
+          <div className="mt-4 flex gap-6 text-center">
+            <div>
+              <p className="text-lg font-bold text-slate-900 dark:text-white">{Math.round(totals.calories)}</p>
+              <p className="text-[10px] text-slate-400 uppercase">Consumed</p>
+            </div>
+            <div className="w-px h-8 bg-slate-200 dark:bg-slate-700" />
+            <div>
+              <p className="text-lg font-bold text-slate-900 dark:text-white">{calGoal}</p>
+              <p className="text-[10px] text-slate-400 uppercase">Goal</p>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Macros + BMI */}
+        <motion.div {...fadeUp(6)} className="glass-card p-6 lg:col-span-2 flex flex-col gap-6">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">Macro Breakdown</h3>
+            <div className="space-y-4">
+              <MacroBar label="Protein" value={totals.protein} goal={protGoal} color="bg-gradient-to-r from-rose-500 to-pink-500" icon={FiTrendingUp} />
+              <MacroBar label="Carbs"   value={totals.carbs}   goal={carbGoal} color="bg-gradient-to-r from-blue-500 to-cyan-500"  icon={FiDroplet} />
+              <MacroBar label="Fat"     value={totals.fat}     goal={fatGoal}  color="bg-gradient-to-r from-purple-500 to-violet-500" icon={FiTarget} />
             </div>
           </div>
 
-          <p className="text-sm text-slate-400 mt-4">
-            {calorieGoal - totalCalories > 0
-              ? `${calorieGoal - totalCalories} calories remaining`
-              : '🎉 Goal reached!'
-            }
-          </p>
-          <Link to="/log-food" className="mt-4">
-            <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-purple-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-brand-500/25 transition-all">
-              <FiPlus size={14} /> Add Meal
-            </button>
-          </Link>
+          {bmi && (
+            <div className={`rounded-xl bg-gradient-to-r ${bmiBg} p-4 flex items-center gap-4`}>
+              <div className="w-14 h-14 rounded-xl bg-white/80 dark:bg-slate-900/50 flex flex-col items-center justify-center">
+                <span className={`text-xl font-bold ${bmiColor}`}>{bmi}</span>
+                <span className="text-[9px] text-slate-400 uppercase">BMI</span>
+              </div>
+              <div>
+                <p className={`text-sm font-semibold ${bmiColor}`}>{bmiLabel}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  {bmi < 25 ? 'Great job maintaining a healthy weight!' : 'Consider adjusting your nutrition goals'}
+                </p>
+              </div>
+            </div>
+          )}
         </motion.div>
       </div>
 
-      {/* Today's Meals */}
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-        className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-100 dark:border-slate-800 shadow-sm"
-      >
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h3 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-              <FiClock size={16} className="text-brand-500" />Today&rsquo;s Meals
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">{todaysMeals.length} meal{todaysMeals.length !== 1 ? 's' : ''} logged</p>
-          </div>
-          <Link to="/nutrition">
-            <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-brand-600 bg-brand-50 hover:bg-brand-100 transition-colors">
-              <FiTrendingUp size={13} /> View Analysis
-            </button>
+      {/* ── Today's Meals ───────────────────────────── */}
+      <motion.div {...fadeUp(7)} className="glass-card p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Today's Meals</h3>
+          <Link to="/history" className="text-xs font-medium text-brand-500 hover:text-brand-600 transition-colors">
+            View All →
           </Link>
         </div>
-
-        {loading ? (
-          <div className="flex items-center justify-center py-12 text-slate-400 text-sm">
-            <span className="w-5 h-5 border-2 border-slate-200 border-t-brand-500 rounded-full animate-spin mr-3" />
-            Loading...
-          </div>
-        ) : todaysMeals.length === 0 ? (
+        {meals.length === 0 ? (
           <div className="text-center py-12">
-            <div className="text-4xl mb-3 opacity-30">🍽️</div>
-            <p className="text-slate-400 text-sm mb-4">No meals logged today. Start tracking your nutrition!</p>
-            <Link to="/log-food">
-              <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-purple-600 text-white text-sm font-semibold hover:shadow-lg transition-all">
-                <FiPlus size={14} /> Log Your First Meal
-              </button>
-            </Link>
+            <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-3">
+              <FiPlus className="w-6 h-6 text-slate-300 dark:text-slate-600" />
+            </div>
+            <p className="text-sm text-slate-400">No meals logged yet today</p>
+            <Link to="/log-food" className="btn-primary mt-4 text-xs px-4 py-2">Log your first meal</Link>
           </div>
         ) : (
-          <div className="space-y-3">
-            {todaysMeals.map((meal, i) => {
-              const kcal = Math.round((meal.foodItem?.nutrientProfile?.calories || 0) * meal.portionSize)
-              const emoji = getFoodEmoji(meal.foodItem?.name, meal.foodItem?.category)
-              const mtConfig = MEAL_TYPE_CONFIG[meal.mealType] || {}
+          <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory -mx-1 px-1">
+            {meals.map((m) => {
+              const cfg = MEAL_TYPE_CONFIG[m.mealType] || MEAL_TYPE_CONFIG.SNACK;
               return (
-                <motion.div
-                  key={meal.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-brand-200 hover:bg-brand-50/30 dark:hover:bg-brand-500/10 transition-all duration-200"
+                <div
+                  key={m.id}
+                  className="snap-start flex-shrink-0 w-40 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/40 hover:shadow-md transition-all"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style={{ background: mtConfig.bg || '#f1f5f9' }}>
-                      {emoji}
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{meal.foodItem?.name}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase"
-                          style={{ background: mtConfig.bg, color: mtConfig.color }}
-                        >
-                          {mtConfig.emoji} {meal.mealType}
-                        </span>
-                        <span className="text-[11px] text-slate-400">{meal.portionSize} serving{meal.portionSize !== 1 ? 's' : ''}</span>
-                      </div>
-                    </div>
+                  <div className="text-2xl mb-2">{getFoodEmoji(m.foodName)}</div>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{m.foodName}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{m.portionSize}g</p>
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <span className="text-xs">{cfg.emoji}</span>
+                    <span className="text-xs text-slate-400">{cfg.label}</span>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{kcal} kcal</p>
-                    <p className="text-[11px] text-slate-400">
-                      {new Date(meal.consumedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                </motion.div>
-              )
+                  <p className="text-sm font-bold text-brand-600 dark:text-brand-400 mt-1">{Math.round(m.calories)} kcal</p>
+                </div>
+              );
             })}
+            {/* Add card */}
+            <Link
+              to="/log-food"
+              className="snap-start flex-shrink-0 w-40 p-4 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center text-slate-400 hover:text-brand-500 hover:border-brand-300 dark:hover:border-brand-600 transition-all"
+            >
+              <FiPlus className="w-6 h-6 mb-1" />
+              <span className="text-xs font-medium">Add Meal</span>
+            </Link>
           </div>
         )}
       </motion.div>
-    </Layout>
-  )
-}
 
-export default Dashboard
+      {/* ── Quick Actions ───────────────────────────── */}
+      <motion.div {...fadeUp(8)} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {quickActions.map((a) => (
+          <Link
+            key={a.to}
+            to={a.to}
+            className="glass-card-hover p-4 flex flex-col items-center gap-3 text-center group"
+          >
+            <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${a.bg} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
+              <a.icon className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{a.label}</span>
+          </Link>
+        ))}
+      </motion.div>
+    </Layout>
+  );
+}

@@ -1,269 +1,207 @@
-import { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { FiSend, FiCpu, FiAlertCircle, FiTrash2, FiZap } from 'react-icons/fi'
-import toast from 'react-hot-toast'
-import api from '../services/api'
-import Layout from '../components/Layout'
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
+import Layout from '../components/Layout';
+import api from '../services/api';
+import { FiSend, FiTrash2, FiCpu, FiWifiOff, FiZap } from 'react-icons/fi';
 
 const SUGGESTED_PROMPTS = [
-  { emoji: '🥗', text: 'What should I eat for dinner to balance my nutrients?' },
-  { emoji: '💪', text: 'Am I getting enough protein today?' },
-  { emoji: '🍳', text: 'Suggest a healthy Indian breakfast' },
-  { emoji: '📊', text: 'Analyze my diet and give recommendations' },
-  { emoji: '🥜', text: 'What are good vegetarian protein sources?' },
-  { emoji: '🔥', text: 'How many more calories should I eat today?' },
-]
+  '🍛 Healthy Indian breakfast ideas',
+  '💪 High protein vegetarian meals',
+  '🔥 How to reduce belly fat with diet?',
+  '🥗 Low calorie dinner recipes',
+  '📊 Explain macronutrients simply',
+  '🫘 Best iron-rich Indian foods',
+];
 
-function AiChat({ user, onLogout }) {
-  const [messages, setMessages] = useState([])
-  const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [ollamaStatus, setOllamaStatus] = useState(null) // null = checking, true/false
-  const messagesEndRef = useRef(null)
-  const inputRef = useRef(null)
+export default function AiChat({ user, onLogout }) {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const [ollamaOnline, setOllamaOnline] = useState(null);
+  const chatEnd = useRef(null);
+  const inputRef = useRef(null);
 
-  useEffect(() => { checkOllamaStatus() }, [])
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, loading])
+  /* Check Ollama status */
+  useEffect(() => {
+    api.get('/api/ai/status')
+      .then((res) => setOllamaOnline(res.data?.available ?? false))
+      .catch(() => setOllamaOnline(false));
+  }, []);
 
-  const checkOllamaStatus = async () => {
-    try {
-      const res = await api.get('/api/ai/status')
-      setOllamaStatus(res.data.ollamaAvailable)
-    } catch {
-      setOllamaStatus(false)
-    }
-  }
+  /* Auto-scroll */
+  useEffect(() => {
+    chatEnd.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, sending]);
 
   const sendMessage = async (text) => {
-    const userMsg = (text || input).trim()
-    if (!userMsg || loading) return
+    const msg = (text || input).trim();
+    if (!msg || sending) return;
+    setInput('');
 
-    setInput('')
-    setMessages(prev => [...prev, { role: 'user', content: userMsg }])
-    setLoading(true)
+    const userMsg = { role: 'user', content: msg };
+    setMessages((prev) => [...prev, userMsg]);
+    setSending(true);
 
     try {
-      // Build conversation history (last 10 messages for context window)
-      const history = messages.slice(-10).map(m => ({
-        role: m.role,
-        content: m.content
-      }))
+      const conversationContext = [...messages.slice(-10), userMsg]
+        .map((m) => `${m.role === 'user' ? 'User' : 'NutriBot'}: ${m.content}`)
+        .join('\n');
 
       const res = await api.post('/api/ai/chat', {
-        message: userMsg,
-        userId: user.userId,
-        history
-      })
+        message: msg,
+        userId: user.id,
+        conversationContext,
+      });
 
-      setMessages(prev => [...prev, { role: 'assistant', content: res.data.reply }])
-    } catch (err) {
-      const errorMsg = err.response?.data?.reply || 'Failed to get a response. Is Ollama running?'
-      setMessages(prev => [...prev, { role: 'assistant', content: errorMsg, isError: true }])
-      toast.error('AI request failed')
-    } finally {
-      setLoading(false)
-      inputRef.current?.focus()
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: res.data?.response || res.data?.message || 'No response.' },
+      ]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: '⚠️ Sorry, I couldn\'t connect. Make sure Ollama is running.' },
+      ]);
     }
-  }
+    setSending(false);
+    inputRef.current?.focus();
+  };
 
   const clearChat = () => {
-    setMessages([])
-    toast.success('Chat cleared')
-  }
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      sendMessage()
-    }
-  }
+    setMessages([]);
+    toast.success('Chat cleared');
+  };
 
   return (
     <Layout user={user} onLogout={onLogout}>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center shadow-lg shadow-brand-500/20">
-              <FiCpu size={18} className="text-white" />
+      <div className="flex flex-col h-[calc(100vh-6rem)] lg:h-[calc(100vh-4rem)]">
+        {/* ── Header ──────────────────────────────── */}
+        <div className="flex items-center justify-between mb-4 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-purple-500 flex items-center justify-center shadow-glow-sm">
+              <FiCpu className="w-5 h-5 text-white" />
             </div>
-            NutriBot
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">AI-powered nutrition assistant — knows your today's meals</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Status pill */}
-          <div className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${
-            ollamaStatus === null
-              ? 'border-slate-200 dark:border-slate-700 text-slate-400 bg-slate-50 dark:bg-slate-800'
-              : ollamaStatus
-                ? 'border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30'
-                : 'border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30'
-          }`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${
-              ollamaStatus === null ? 'bg-slate-300 animate-pulse' : ollamaStatus ? 'bg-green-500' : 'bg-red-500'
-            }`} />
-            {ollamaStatus === null ? 'Checking...' : ollamaStatus ? 'Ollama Online' : 'Ollama Offline'}
+            <div>
+              <h1 className="text-lg font-bold text-slate-900 dark:text-white">NutriBot AI</h1>
+              <div className="flex items-center gap-1.5">
+                <div className={`w-2 h-2 rounded-full ${ollamaOnline ? 'bg-emerald-500' : ollamaOnline === false ? 'bg-rose-500' : 'bg-amber-500'} animate-pulse`} />
+                <span className="text-[11px] text-slate-400">
+                  {ollamaOnline ? 'Online' : ollamaOnline === false ? 'Offline' : 'Checking…'}
+                </span>
+              </div>
+            </div>
           </div>
           {messages.length > 0 && (
-            <button onClick={clearChat} className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-red-500 hover:border-red-200 dark:hover:border-red-700 transition-all" title="Clear chat">
-              <FiTrash2 size={15} />
+            <button onClick={clearChat} className="btn-ghost text-xs text-slate-400 hover:text-rose-500">
+              <FiTrash2 className="w-3.5 h-3.5" /> Clear
             </button>
           )}
         </div>
-      </div>
 
-      {/* Offline Banner */}
-      {ollamaStatus === false && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-4 p-4 rounded-xl bg-amber-50 border border-amber-200"
-        >
-          <div className="flex gap-3">
-            <FiAlertCircle size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-amber-800 mb-1">Ollama is not running</p>
-              <p className="text-xs text-amber-700 leading-relaxed">
-                Start Ollama on your machine to use the AI assistant.
-                Open a terminal and run:
-              </p>
-              <div className="mt-2 space-y-1">
-                <code className="block text-xs bg-amber-100 text-amber-900 px-3 py-1.5 rounded-lg font-mono">ollama serve</code>
-                <code className="block text-xs bg-amber-100 text-amber-900 px-3 py-1.5 rounded-lg font-mono">ollama pull llama3.2:3b</code>
+        {/* ── Offline banner ──────────────────────── */}
+        {ollamaOnline === false && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200/50 dark:border-amber-500/20 flex items-center gap-2 text-amber-700 dark:text-amber-400 text-xs flex-shrink-0"
+          >
+            <FiWifiOff className="w-4 h-4" />
+            <span>Ollama is offline. Start it with <code className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-500/20 font-mono text-[11px]">ollama serve</code> and pull model <code className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-500/20 font-mono text-[11px]">llama3.2:1b</code></span>
+          </motion.div>
+        )}
+
+        {/* ── Chat Area ───────────────────────────── */}
+        <div className="flex-1 overflow-y-auto space-y-3 pr-1 mb-4">
+          {messages.length === 0 && !sending && (
+            <div className="flex flex-col items-center justify-center h-full py-12">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-500/10 to-purple-500/10 flex items-center justify-center mb-4">
+                <FiZap className="w-7 h-7 text-brand-500" />
               </div>
-              <button onClick={checkOllamaStatus} className="mt-3 text-xs font-semibold text-amber-700 hover:text-amber-900 underline underline-offset-2">
-                Re-check connection
-              </button>
-            </div>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Chat Container */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col" style={{ height: 'calc(100vh - 260px)', minHeight: '400px' }}>
-
-        {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 space-y-4">
-          {messages.length === 0 && !loading ? (
-            <div className="flex flex-col items-center justify-center h-full text-center px-4">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center mb-4 shadow-lg shadow-brand-500/20">
-                <FiZap size={28} className="text-white" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-1">Hi, I'm NutriBot!</h3>
-              <p className="text-sm text-slate-400 max-w-md mb-6">
-                I can analyze your meals, suggest foods to balance your diet, and answer any nutrition questions. I already know what you've eaten today!
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1">Ask me anything about nutrition</h3>
+              <p className="text-xs text-slate-400 mb-6 text-center max-w-sm">
+                I can help with meal planning, nutrient info, Indian food suggestions, and dietary advice.
               </p>
-
-              {/* Suggested prompts */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">
-                {SUGGESTED_PROMPTS.map((prompt, i) => (
-                  <motion.button
-                    key={i}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    onClick={() => sendMessage(prompt.text)}
-                    className="text-left px-3.5 py-3 rounded-xl border border-slate-100 dark:border-slate-700 hover:border-brand-200 dark:hover:border-brand-600 hover:bg-brand-50/50 dark:hover:bg-brand-900/20 transition-all text-sm text-slate-600 dark:text-slate-300 group"
+                {SUGGESTED_PROMPTS.map((prompt) => (
+                  <button
+                    key={prompt}
+                    onClick={() => sendMessage(prompt)}
+                    className="text-left px-4 py-3 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 hover:border-brand-300 dark:hover:border-brand-700 hover:shadow-sm transition-all"
                   >
-                    <span className="mr-2">{prompt.emoji}</span>
-                    <span className="group-hover:text-brand-700 transition-colors">{prompt.text}</span>
-                  </motion.button>
+                    {prompt}
+                  </button>
                 ))}
               </div>
             </div>
-          ) : (
-            <AnimatePresence initial={false}>
-              {messages.map((msg, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  {msg.role === 'assistant' && (
-                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center flex-shrink-0 mt-1 shadow-sm">
-                      <FiCpu size={14} className="text-white" />
-                    </div>
-                  )}
-                  <div className={`max-w-[80%] sm:max-w-[70%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                    msg.role === 'user'
-                      ? 'bg-gradient-to-r from-brand-600 to-purple-600 text-white rounded-br-md'
-                      : msg.isError
-                        ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-100 dark:border-red-800 rounded-bl-md'
-                        : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-700 rounded-bl-md'
-                  }`}>
-                    <div className="whitespace-pre-wrap">{msg.content}</div>
-                  </div>
-                  {msg.role === 'user' && (
-                    <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0 mt-1 text-xs font-bold text-slate-600 uppercase">
-                      {user?.username?.substring(0, 2) || '??'}
-                    </div>
-                  )}
-                </motion.div>
-              ))}
-
-              {/* Typing indicator */}
-              {loading && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex gap-3 justify-start"
-                >
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center flex-shrink-0 mt-1 shadow-sm">
-                    <FiCpu size={14} className="text-white" />
-                  </div>
-                  <div className="bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl rounded-bl-md px-4 py-3">
-                    <div className="flex gap-1.5 items-center">
-                      <span className="w-2 h-2 rounded-full bg-slate-300 animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-2 h-2 rounded-full bg-slate-300 animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-2 h-2 rounded-full bg-slate-300 animate-bounce" style={{ animationDelay: '300ms' }} />
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
           )}
-          <div ref={messagesEndRef} />
+
+          <AnimatePresence>
+            {messages.map((msg, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`
+                    max-w-[80%] px-4 py-3 text-sm leading-relaxed
+                    ${msg.role === 'user'
+                      ? 'chat-bubble-user bg-gradient-to-r from-brand-600 to-purple-600 text-white'
+                      : 'chat-bubble-ai glass-card text-slate-700 dark:text-slate-200'}
+                  `}
+                >
+                  <div className="whitespace-pre-wrap break-words">{msg.content}</div>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {/* Typing indicator */}
+          {sending && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex justify-start"
+            >
+              <div className="chat-bubble-ai glass-card px-5 py-3.5 flex items-center gap-1.5 text-brand-500">
+                <span className="typing-dot" />
+                <span className="typing-dot" />
+                <span className="typing-dot" />
+              </div>
+            </motion.div>
+          )}
+
+          <div ref={chatEnd} />
         </div>
 
-        {/* Input Bar */}
-        <div className="border-t border-slate-100 dark:border-slate-800 px-4 sm:px-6 py-3">
-          <div className="flex items-end gap-2">
-            <textarea
+        {/* ── Input ───────────────────────────────── */}
+        <div className="flex-shrink-0">
+          <form
+            onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
+            className="flex gap-2"
+          >
+            <input
               ref={inputRef}
+              type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask NutriBot anything about your diet..."
-              rows={1}
-              className="flex-1 resize-none rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm text-slate-800 dark:text-white placeholder-slate-400 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 transition-all"
-              style={{ maxHeight: '120px' }}
-              onInput={(e) => {
-                e.target.style.height = 'auto'
-                e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
-              }}
+              placeholder="Ask about nutrition, meals, or health…"
+              className="flex-1 input-glass py-3.5"
+              disabled={sending}
             />
             <button
-              onClick={() => sendMessage()}
-              disabled={!input.trim() || loading}
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all flex-shrink-0 ${
-                input.trim() && !loading
-                  ? 'bg-gradient-to-r from-brand-600 to-purple-600 text-white shadow-lg shadow-brand-500/25 hover:shadow-xl hover:shadow-brand-500/30'
-                  : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-              }`}
+              type="submit"
+              disabled={sending || !input.trim()}
+              className="btn-primary px-5 py-3.5 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <FiSend size={16} className={loading ? 'animate-pulse' : ''} />
+              <FiSend className="w-4 h-4" />
             </button>
-          </div>
-          <p className="text-[10px] text-slate-400 mt-2 text-center">
-            NutriBot uses your logged meals for context · Powered by Ollama · Not medical advice
-          </p>
+          </form>
         </div>
       </div>
     </Layout>
-  )
+  );
 }
-
-export default AiChat

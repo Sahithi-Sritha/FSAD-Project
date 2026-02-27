@@ -1,139 +1,206 @@
-import { Link, useLocation } from 'react-router-dom'
-import { FiGrid, FiPlusCircle, FiClock, FiBarChart2, FiUser, FiLogOut, FiMenu, FiX, FiCpu, FiPieChart, FiTarget, FiMoon, FiSun } from 'react-icons/fi'
-import { useState } from 'react'
-import { useTheme } from '../contexts/ThemeContext'
+import { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useTheme } from '../contexts/ThemeContext';
+import {
+  FiHome, FiPlusCircle, FiClock, FiActivity, FiMessageSquare,
+  FiBarChart2, FiTarget, FiUser, FiSun, FiMoon, FiLogOut,
+  FiMenu, FiX, FiChevronRight
+} from 'react-icons/fi';
 
-function Layout({ user, onLogout, children }) {
-  const location = useLocation()
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const { dark, toggle } = useTheme()
+const NAV_SECTIONS = [
+  {
+    label: 'MAIN',
+    items: [
+      { path: '/dashboard', icon: FiHome,       name: 'Dashboard' },
+      { path: '/log-food',  icon: FiPlusCircle,  name: 'Log Food' },
+      { path: '/history',   icon: FiClock,       name: 'Meal History' },
+    ],
+  },
+  {
+    label: 'INSIGHTS',
+    items: [
+      { path: '/nutrition', icon: FiActivity,     name: 'Nutrition' },
+      { path: '/ai-chat',   icon: FiMessageSquare, name: 'NutriBot AI' },
+      { path: '/charts',    icon: FiBarChart2,    name: 'Charts' },
+      { path: '/goals',     icon: FiTarget,       name: 'Goals' },
+    ],
+  },
+  {
+    label: 'ACCOUNT',
+    items: [
+      { path: '/profile',   icon: FiUser,         name: 'Profile' },
+    ],
+  },
+];
 
-  const isActive = (path) => location.pathname === path
+export default function Layout({ user, onLogout, children }) {
+  const location = useLocation();
+  const { darkMode, toggleDarkMode } = useTheme();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  const navItems = [
-    { path: '/dashboard', icon: <FiGrid size={18} />,       label: 'Dashboard' },
-    { path: '/log-food',  icon: <FiPlusCircle size={18} />,  label: 'Log Food' },
-    { path: '/history',   icon: <FiClock size={18} />,       label: 'Meal History' },
-    { path: '/nutrition', icon: <FiBarChart2 size={18} />,   label: 'Nutrition' },
-    { path: '/ai-chat',   icon: <FiCpu size={18} />,         label: 'NutriBot AI' },
-    { path: '/charts',    icon: <FiPieChart size={18} />,    label: 'Charts' },
-    { path: '/goals',     icon: <FiTarget size={18} />,      label: 'Goals' },
-    { path: '/profile',   icon: <FiUser size={18} />,        label: 'Profile' },
-  ]
+  const initials = user?.username
+    ? user.username.slice(0, 2).toUpperCase()
+    : 'U';
 
-  const initials = user?.username ? user.username.substring(0, 2).toUpperCase() : '??'
-
-  const SidebarContent = () => (
-    <>
-      {/* Brand */}
+  const NavContent = ({ onNav }) => (
+    <div className="flex flex-col h-full">
+      {/* ── Brand ─────────────────────────── */}
       <div className="px-5 pt-7 pb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center text-white text-lg shadow-lg shadow-brand-500/30">
-            🌿
+        <Link to="/dashboard" onClick={onNav} className="flex items-center gap-3 group">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-purple-500 flex items-center justify-center shadow-glow-sm">
+            <span className="text-white text-sm font-black tracking-tight">DS</span>
           </div>
-          <div>
-            <h2 className="text-[15px] font-bold text-white leading-tight">DietSphere</h2>
-            <span className="text-[11px] text-slate-500 uppercase tracking-wider font-medium">Diet Balance</span>
-          </div>
-        </div>
+          <span className="text-lg font-bold text-white tracking-tight group-hover:text-brand-300 transition-colors">
+            DietSphere
+          </span>
+        </Link>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-3 space-y-1">
-        <div className="px-3 mb-3">
-          <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Menu</span>
-        </div>
-        {navItems.map(({ path, icon, label }) => (
-          <Link
-            key={path}
-            to={path}
-            onClick={() => setMobileOpen(false)}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${
-              isActive(path)
-                ? 'bg-gradient-to-r from-brand-500/20 to-purple-500/10 text-brand-400 shadow-sm shadow-brand-500/5'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-            }`}
-          >
-            <span className={`w-5 flex items-center justify-center ${isActive(path) ? 'text-brand-400' : 'text-slate-500 group-hover:text-slate-300'}`}>
-              {icon}
-            </span>
-            {label}
-            {isActive(path) && (
-              <span className="ml-auto w-1.5 h-1.5 rounded-full bg-brand-400" />
-            )}
-          </Link>
+      {/* ── Nav Sections ──────────────────── */}
+      <nav className="flex-1 px-3 space-y-6 overflow-y-auto scrollbar-thin">
+        {NAV_SECTIONS.map((section) => (
+          <div key={section.label}>
+            <p className="px-3 mb-2 text-[10px] font-semibold tracking-[0.15em] text-slate-500 uppercase select-none">
+              {section.label}
+            </p>
+            <div className="space-y-0.5">
+              {section.items.map((item) => {
+                const active = location.pathname === item.path;
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={onNav}
+                    className={`
+                      relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium
+                      transition-all duration-200 group
+                      ${active
+                        ? 'text-brand-400 bg-brand-500/[0.12]'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.05]'}
+                    `}
+                  >
+                    {/* Active indicator bar */}
+                    {active && (
+                      <motion.div
+                        layoutId="nav-indicator"
+                        className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full bg-gradient-to-b from-brand-400 to-purple-400"
+                        transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+                      />
+                    )}
+                    <item.icon className={`w-[18px] h-[18px] flex-shrink-0 ${active ? 'text-brand-400' : 'text-slate-500 group-hover:text-slate-300'}`} />
+                    <span>{item.name}</span>
+                    {active && <FiChevronRight className="ml-auto w-3.5 h-3.5 text-brand-400/60" />}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
         ))}
       </nav>
 
-      {/* Footer / User */}
-      <div className="px-3 pb-4 border-t border-white/5 pt-4 mt-2">
-        <div className="flex items-center gap-3 px-3 mb-3">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-slate-700 to-slate-600 flex items-center justify-center text-xs font-bold text-brand-300 border-2 border-slate-600 uppercase">
+      {/* ── Footer ────────────────────────── */}
+      <div className="px-3 pb-5 pt-3 border-t border-white/[0.06] space-y-2">
+        <button
+          onClick={toggleDarkMode}
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[13px] font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.05] transition-all"
+        >
+          {darkMode ? <FiSun className="w-[18px] h-[18px]" /> : <FiMoon className="w-[18px] h-[18px]" />}
+          <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
+        </button>
+        <button
+          onClick={() => { onNav?.(); onLogout(); }}
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[13px] font-medium text-slate-400 hover:text-rose-400 hover:bg-rose-500/[0.08] transition-all"
+        >
+          <FiLogOut className="w-[18px] h-[18px]" />
+          <span>Sign Out</span>
+        </button>
+
+        {/* User avatar */}
+        <div className="flex items-center gap-3 px-3 pt-3">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-500 to-purple-500 flex items-center justify-center text-xs font-bold text-white shadow-glow-sm">
             {initials}
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-sm font-semibold text-slate-200 truncate">{user?.username}</div>
-            <div className="text-[11px] text-slate-500">Member</div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-slate-200 truncate">{user?.username}</p>
+            <p className="text-[10px] text-slate-500 truncate">{user?.email}</p>
           </div>
         </div>
-        {/* Dark Mode Toggle */}
-        <button
-          onClick={toggle}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-white/5 w-full transition-all duration-200 mb-1"
-        >
-          {dark ? <FiSun size={16} /> : <FiMoon size={16} />}
-          {dark ? 'Light Mode' : 'Dark Mode'}
-        </button>
-        <button 
-          onClick={onLogout}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 w-full transition-all duration-200"
-        >
-          <FiLogOut size={16} />
-          Sign Out
-        </button>
       </div>
-    </>
-  )
+    </div>
+  );
 
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950">
-      {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex lg:flex-col w-[260px] bg-slate-900 fixed inset-y-0 left-0 z-50">
-        <SidebarContent />
+    <div className="flex min-h-screen">
+      {/* Mesh background */}
+      <div className="mesh-bg" />
+
+      {/* ── Desktop Sidebar ───────────────── */}
+      <aside className="hidden lg:flex flex-col w-[240px] fixed inset-y-0 left-0 z-30 glass-sidebar">
+        <NavContent />
       </aside>
 
-      {/* Mobile overlay */}
-      {mobileOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setMobileOpen(false)} />
-      )}
-
-      {/* Mobile Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-[260px] bg-slate-900 flex flex-col transform transition-transform duration-300 lg:hidden ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <button onClick={() => setMobileOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
-          <FiX size={20} />
-        </button>
-        <SidebarContent />
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 lg:ml-[260px] min-h-screen">
-        {/* Mobile header */}
-        <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30">
-          <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300">
-            <FiMenu size={20} />
-          </button>
-          <span className="text-sm font-bold text-slate-800 dark:text-white">DietSphere</span>
-          <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-xs font-bold text-brand-700 uppercase">
-            {initials}
+      {/* ── Mobile Header ─────────────────── */}
+      <header className="lg:hidden fixed top-0 inset-x-0 z-40 h-14 flex items-center justify-between px-4 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200/60 dark:border-white/[0.06]">
+        <Link to="/dashboard" className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-500 to-purple-500 flex items-center justify-center">
+            <span className="text-white text-[10px] font-black">DS</span>
           </div>
+          <span className="text-sm font-bold text-slate-800 dark:text-white">DietSphere</span>
+        </Link>
+        <div className="flex items-center gap-2">
+          <button onClick={toggleDarkMode} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors text-slate-500 dark:text-slate-400">
+            {darkMode ? <FiSun className="w-4 h-4" /> : <FiMoon className="w-4 h-4" />}
+          </button>
+          <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors text-slate-700 dark:text-slate-300">
+            <FiMenu className="w-5 h-5" />
+          </button>
         </div>
+      </header>
 
-        <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+      {/* ── Mobile Drawer ─────────────────── */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm lg:hidden"
+              onClick={() => setMobileOpen(false)}
+            />
+            <motion.aside
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', stiffness: 350, damping: 35 }}
+              className="fixed inset-y-0 left-0 z-50 w-[260px] glass-sidebar lg:hidden"
+            >
+              <button
+                onClick={() => setMobileOpen(false)}
+                className="absolute top-5 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] transition-all"
+              >
+                <FiX className="w-5 h-5" />
+              </button>
+              <NavContent onNav={() => setMobileOpen(false)} />
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── Main Content ──────────────────── */}
+      <main className="flex-1 lg:ml-[240px] pt-14 lg:pt-0 min-h-screen">
+        <motion.div
+          key={location.pathname}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+          className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto"
+        >
           {children}
-        </div>
+        </motion.div>
       </main>
     </div>
-  )
+  );
 }
-
-export default Layout

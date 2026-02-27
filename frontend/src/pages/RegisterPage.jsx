@@ -1,319 +1,285 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { FiUserPlus, FiUser, FiMail, FiLock, FiCalendar, FiArrowRight } from 'react-icons/fi'
-import api from '../services/api'
+import { useState, useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
+import api from '../services/api';
+import {
+  FiUser, FiMail, FiLock, FiArrowRight,
+  FiEye, FiEyeOff, FiActivity, FiArrowLeft
+} from 'react-icons/fi';
 
-function RegisterPage({ onRegister }) {
-  const [formData, setFormData] = useState({ username: '', email: '', password: '', age: '', weightKg: '', heightCm: '' })
-  const [heightMode, setHeightMode] = useState('cm') // 'cm' or 'ft'
-  const [feet, setFeet] = useState('')
-  const [inches, setInches] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+const FLOAT_EMOJIS = ['🍛', '🥒', '🍋', '🫑', '🥭', '🍇'];
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
-  }
+export default function RegisterPage({ onRegister }) {
+  const navigate = useNavigate();
+  const [form, setForm] = useState({
+    username: '', email: '', password: '', confirmPassword: '',
+    age: '', weightKg: '', heightCm: '',
+  });
+  const [heightMode, setHeightMode] = useState('cm');
+  const [feet, setFeet] = useState('');
+  const [inches, setInches] = useState('');
+  const [showPw, setShowPw] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  // Convert feet+inches to cm whenever they change
-  const handleFeetChange = (val) => {
-    setFeet(val)
-    const totalCm = (parseFloat(val || 0) * 30.48) + (parseFloat(inches || 0) * 2.54)
-    setFormData(prev => ({ ...prev, heightCm: totalCm > 0 ? Math.round(totalCm).toString() : '' }))
-  }
-  const handleInchesChange = (val) => {
-    setInches(val)
-    const totalCm = (parseFloat(feet || 0) * 30.48) + (parseFloat(val || 0) * 2.54)
-    setFormData(prev => ({ ...prev, heightCm: totalCm > 0 ? Math.round(totalCm).toString() : '' }))
-  }
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
-  // Live BMI preview
-  const bmiPreview = () => {
-    const w = parseFloat(formData.weightKg)
-    const h = parseFloat(formData.heightCm)
-    if (!w || !h || h <= 0) return null
-    const bmi = w / ((h / 100) ** 2)
-    let category = '', color = ''
-    if (bmi < 18.5) { category = 'Underweight'; color = 'text-blue-500' }
-    else if (bmi < 25) { category = 'Normal'; color = 'text-emerald-500' }
-    else if (bmi < 30) { category = 'Overweight'; color = 'text-amber-500' }
-    else { category = 'Obese'; color = 'text-red-500' }
-    return { value: bmi.toFixed(1), category, color }
-  }
+  /* Height conversion */
+  const handleFeetChange = (v) => {
+    setFeet(v);
+    const cm = Math.round((parseInt(v || 0) * 30.48) + (parseInt(inches || 0) * 2.54));
+    setForm((f) => ({ ...f, heightCm: cm || '' }));
+  };
+  const handleInchesChange = (v) => {
+    setInches(v);
+    const cm = Math.round((parseInt(feet || 0) * 30.48) + (parseInt(v || 0) * 2.54));
+    setForm((f) => ({ ...f, heightCm: cm || '' }));
+  };
 
-  const bmi = bmiPreview()
+  /* BMI preview */
+  const bmi = useMemo(() => {
+    const w = parseFloat(form.weightKg), h = parseFloat(form.heightCm);
+    if (w > 0 && h > 0) return (w / ((h / 100) ** 2)).toFixed(1);
+    return null;
+  }, [form.weightKg, form.heightCm]);
+
+  const bmiInfo = useMemo(() => {
+    if (!bmi) return null;
+    const v = parseFloat(bmi);
+    if (v < 18.5) return { label: 'Underweight', color: 'text-amber-500', bg: 'bg-amber-500' };
+    if (v < 25)   return { label: 'Normal',      color: 'text-emerald-500', bg: 'bg-emerald-500' };
+    if (v < 30)   return { label: 'Overweight',   color: 'text-orange-500', bg: 'bg-orange-500' };
+    return { label: 'Obese', color: 'text-rose-500', bg: 'bg-rose-500' };
+  }, [bmi]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
+    e.preventDefault();
+    setError('');
+    if (form.password !== form.confirmPassword) { setError('Passwords do not match'); return; }
+    if (form.password.length < 6) { setError('Password must be at least 6 characters'); return; }
+
+    setLoading(true);
     try {
-      const response = await api.post('/api/auth/register', {
-        ...formData,
-        age: parseInt(formData.age),
-        weightKg: parseFloat(formData.weightKg),
-        heightCm: parseFloat(formData.heightCm),
-      })
-      onRegister(response.data)
+      const body = {
+        username: form.username, email: form.email, password: form.password,
+        age: form.age ? parseInt(form.age) : null,
+        weightKg: form.weightKg ? parseFloat(form.weightKg) : null,
+        heightCm: form.heightCm ? parseFloat(form.heightCm) : null,
+      };
+      await api.post('/api/auth/register', body);
+      toast.success('Account created! Signing in…');
+      const loginRes = await api.post('/api/auth/login', { username: form.username, password: form.password });
+      if (bmi) localStorage.setItem('userBMI', bmi);
+      onRegister(loginRes.data);
+      navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.')
-    } finally {
-      setLoading(false)
+      setError(err.response?.data?.message || 'Registration failed');
     }
-  }
+    setLoading(false);
+  };
 
   return (
     <div className="min-h-screen flex">
-      {/* Left — Gradient branding panel */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-purple-700 via-brand-700 to-brand-600">
-        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-white/5" />
-        <div className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full bg-white/5" />
-        <div className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full bg-brand-400/10" />
-
-        <div className="relative z-10 flex flex-col items-center justify-center w-full px-12">
+      {/* ── Left Panel ──────────────────────────────── */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-purple-600 via-brand-600 to-purple-700">
+        {FLOAT_EMOJIS.map((emoji, i) => (
+          <span
+            key={i}
+            className="auth-float"
+            style={{
+              top: `${8 + (i * 16) % 72}%`,
+              left: `${6 + (i * 17) % 82}%`,
+              animationDelay: `${i * -1.2}s`,
+              fontSize: `${1.5 + (i % 3) * 0.5}rem`,
+            }}
+          >
+            {emoji}
+          </span>
+        ))}
+        <div className="relative z-10 flex flex-col justify-center px-16">
           <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.6 }}
-            className="w-20 h-20 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center text-4xl mb-8 shadow-2xl"
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.7 }}
           >
-            🌿
-          </motion.div>
-          <motion.h1
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.15 }}
-            className="text-4xl font-extrabold text-white mb-3 tracking-tight"
-          >
-            DietSphere
-          </motion.h1>
-          <motion.p
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.25 }}
-            className="text-purple-200 text-center max-w-sm text-lg leading-relaxed"
-          >
-            Join thousands of users who track their nutrition and live healthier every day.
-          </motion.p>
-
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="flex flex-wrap gap-3 mt-10 justify-center"
-          >
-            {['🍛 111+ Indian Foods', '📊 Real-time Analysis', '💡 Smart Insights', '🤖 AI-Powered'].map((f) => (
-              <span key={f} className="px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm text-white/80 text-sm font-medium border border-white/10">
-                {f}
-              </span>
-            ))}
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <span className="text-white text-lg font-black">DS</span>
+              </div>
+              <span className="text-2xl font-bold text-white">DietSphere</span>
+            </div>
+            <h2 className="text-4xl font-bold text-white leading-tight mb-4">
+              Start Your<br />
+              <span className="text-white/80">Wellness Journey</span>
+            </h2>
+            <p className="text-white/60 text-sm max-w-sm leading-relaxed">
+              Create an account to begin tracking your nutrition with AI-powered insights
+              and personalized recommendations.
+            </p>
+            <div className="mt-10 space-y-3">
+              {['BMI-adjusted nutrition goals', 'AI chatbot for dietary advice', 'Comprehensive charts & analytics'].map((f) => (
+                <div key={f} className="flex items-center gap-3 text-white/70 text-sm">
+                  <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
+                    <span className="text-white text-[10px]">✓</span>
+                  </div>
+                  {f}
+                </div>
+              ))}
+            </div>
           </motion.div>
         </div>
+        <div className="absolute -top-32 -right-32 w-80 h-80 rounded-full bg-white/[0.06]" />
+        <div className="absolute -bottom-40 -left-20 w-96 h-96 rounded-full bg-white/[0.04]" />
       </div>
 
-      {/* Right — Register form */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12 bg-white dark:bg-slate-950">
+      {/* ── Right Panel (form) ──────────────────────── */}
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-10 bg-white dark:bg-slate-950 overflow-y-auto">
         <motion.div
-          initial={{ opacity: 0, x: 30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-md"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="w-full max-w-lg"
         >
-          {/* Mobile logo */}
-          <div className="lg:hidden text-center mb-8">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center text-2xl mx-auto mb-3 shadow-lg shadow-brand-500/20">
-              🌿
-            </div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">DietSphere</h1>
-          </div>
+          <Link to="/login" className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 mb-6 transition-colors">
+            <FiArrowLeft className="w-3.5 h-3.5" /> Back to login
+          </Link>
 
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Create your account</h2>
-          <p className="text-slate-500 dark:text-slate-400 mb-8">Start your nutrition journey today</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Create your account</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+            Fill in your details to get started
+          </p>
 
           {error && (
-            <div className="bg-red-50 text-red-700 px-4 py-3 rounded-xl mb-6 text-sm font-medium border border-red-200 flex items-center gap-2">
-              <span className="text-red-400">●</span> {error}
-            </div>
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-5 p-3.5 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200/50 dark:border-rose-500/20 text-rose-600 dark:text-rose-400 text-sm"
+            >
+              {error}
+            </motion.div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                <FiUser className="inline mr-1.5 -mt-0.5" size={14} />Username
-              </label>
-              <input
-                type="text"
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-                required
-                minLength="3"
-                placeholder="Choose a username"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white bg-white dark:bg-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-sm"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                <FiMail className="inline mr-1.5 -mt-0.5" size={14} />Email
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                placeholder="your@email.com"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white bg-white dark:bg-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-sm"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+            {/* Row 1: Username + Email */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                  <FiLock className="inline mr-1.5 -mt-0.5" size={14} />Password
-                </label>
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                  minLength="6"
-                  placeholder="Min 6 chars"
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white bg-white dark:bg-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-sm"
-                />
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Username</label>
+                <div className="relative">
+                  <FiUser className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input type="text" value={form.username} onChange={set('username')} className="input-glass pl-10" placeholder="johndoe" required />
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                  <FiCalendar className="inline mr-1.5 -mt-0.5" size={14} />Age
-                </label>
-                <input
-                  type="number"
-                  name="age"
-                  value={formData.age}
-                  onChange={handleChange}
-                  required
-                  min="1"
-                  max="120"
-                  placeholder="Your age"
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white bg-white dark:bg-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-sm"
-                />
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Email</label>
+                <div className="relative">
+                  <FiMail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input type="email" value={form.email} onChange={set('email')} className="input-glass pl-10" placeholder="john@example.com" required />
+                </div>
               </div>
             </div>
 
-            {/* Weight */}
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                ⚖️ Weight (kg)
-              </label>
-              <input
-                type="number"
-                name="weightKg"
-                value={formData.weightKg}
-                onChange={handleChange}
-                required
-                min="10"
-                max="300"
-                step="0.1"
-                placeholder="e.g. 65"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white bg-white dark:bg-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-sm"
-              />
+            {/* Row 2: Password + Confirm */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Password</label>
+                <div className="relative">
+                  <FiLock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type={showPw ? 'text' : 'password'} value={form.password} onChange={set('password')}
+                    className="input-glass pl-10 pr-10" placeholder="Min. 6 characters" required
+                  />
+                  <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                    {showPw ? <FiEyeOff className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Confirm Password</label>
+                <div className="relative">
+                  <FiLock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input type="password" value={form.confirmPassword} onChange={set('confirmPassword')} className="input-glass pl-10" placeholder="Repeat password" required />
+                </div>
+              </div>
             </div>
 
-            {/* Height with unit toggle */}
+            {/* Row 3: Age + Weight */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Age <span className="text-slate-400 font-normal">(optional)</span></label>
+                <input type="number" value={form.age} onChange={set('age')} className="input-glass" placeholder="e.g. 25" min="1" max="120" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Weight (kg) <span className="text-slate-400 font-normal">(optional)</span></label>
+                <input type="number" value={form.weightKg} onChange={set('weightKg')} className="input-glass" placeholder="e.g. 70" min="20" max="300" step="0.1" />
+              </div>
+            </div>
+
+            {/* Row 4: Height */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                  📏 Height
-                </label>
-                <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden text-xs">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Height <span className="text-slate-400 font-normal">(optional)</span></label>
+                <div className="flex rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 text-xs">
                   <button type="button" onClick={() => setHeightMode('cm')}
-                    className={`px-3 py-1 font-medium transition-all ${heightMode === 'cm' ? 'bg-brand-500 text-white' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                    className={`px-3 py-1 font-medium transition-colors ${heightMode === 'cm' ? 'bg-brand-500 text-white' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}>
                     cm
                   </button>
                   <button type="button" onClick={() => setHeightMode('ft')}
-                    className={`px-3 py-1 font-medium transition-all ${heightMode === 'ft' ? 'bg-brand-500 text-white' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    ft / in
+                    className={`px-3 py-1 font-medium transition-colors ${heightMode === 'ft' ? 'bg-brand-500 text-white' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}>
+                    ft/in
                   </button>
                 </div>
               </div>
               {heightMode === 'cm' ? (
-                <input
-                  type="number"
-                  name="heightCm"
-                  value={formData.heightCm}
-                  onChange={handleChange}
-                  required
-                  min="50"
-                  max="280"
-                  step="1"
-                  placeholder="e.g. 170"
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white bg-white dark:bg-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-sm"
-                />
+                <input type="number" value={form.heightCm} onChange={set('heightCm')} className="input-glass" placeholder="e.g. 175" min="50" max="300" />
               ) : (
                 <div className="grid grid-cols-2 gap-3">
-                  <input
-                    type="number"
-                    min="1"
-                    max="8"
-                    value={feet}
-                    onChange={(e) => handleFeetChange(e.target.value)}
-                    required
-                    placeholder="Feet"
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white bg-white dark:bg-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-sm"
-                  />
-                  <input
-                    type="number"
-                    min="0"
-                    max="11"
-                    value={inches}
-                    onChange={(e) => handleInchesChange(e.target.value)}
-                    placeholder="Inches"
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white bg-white dark:bg-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-sm"
-                  />
+                  <input type="number" value={feet} onChange={(e) => handleFeetChange(e.target.value)} className="input-glass" placeholder="Feet" min="1" max="8" />
+                  <input type="number" value={inches} onChange={(e) => handleInchesChange(e.target.value)} className="input-glass" placeholder="Inches" min="0" max="11" />
                 </div>
               )}
             </div>
 
             {/* BMI Preview */}
-            {bmi && (
+            {bmi && bmiInfo && (
               <motion.div
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-center justify-between px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/40 p-4 flex items-center gap-4"
               >
-                <span className="text-sm text-slate-500 dark:text-slate-400">Your BMI</span>
-                <span className={`text-sm font-bold ${bmi.color}`}>
-                  {bmi.value} &middot; {bmi.category}
-                </span>
+                <div className="flex items-center gap-3">
+                  <FiActivity className={`w-5 h-5 ${bmiInfo.color}`} />
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white">BMI: {bmi}</p>
+                    <p className={`text-xs font-medium ${bmiInfo.color}`}>{bmiInfo.label}</p>
+                  </div>
+                </div>
+                <div className="flex-1 h-2 rounded-full bg-gradient-to-r from-amber-400 via-emerald-400 via-50% to-rose-400 relative ml-4">
+                  <div
+                    className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white border-2 border-slate-900 dark:border-white shadow"
+                    style={{ left: `${Math.min(Math.max(((parseFloat(bmi) - 15) / 25) * 100, 0), 100)}%` }}
+                  />
+                </div>
               </motion.div>
             )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 px-6 rounded-xl bg-gradient-to-r from-purple-600 to-brand-600 text-white font-semibold text-sm hover:shadow-lg hover:shadow-brand-500/25 transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
-            >
+            <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-sm mt-2">
               {loading ? (
-                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
-                <>Create Account <FiArrowRight size={16} /></>
+                <>Create Account <FiArrowRight className="w-4 h-4" /></>
               )}
             </button>
-
-            <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-6">
-              Already have an account?{' '}
-              <Link to="/login" className="text-brand-600 font-semibold hover:text-brand-700 transition-colors">
-                Sign in
-              </Link>
-            </p>
           </form>
+
+          <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
+            Already have an account?{' '}
+            <Link to="/login" className="font-semibold text-brand-600 dark:text-brand-400 hover:underline">
+              Sign in
+            </Link>
+          </p>
         </motion.div>
       </div>
     </div>
-  )
+  );
 }
-
-export default RegisterPage

@@ -1,161 +1,184 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { FiLogIn, FiUser, FiLock, FiArrowRight } from 'react-icons/fi'
-import api from '../services/api'
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import api from '../services/api';
+import { FiMail, FiLock, FiArrowRight, FiEye, FiEyeOff } from 'react-icons/fi';
 
-function LoginPage({ onLogin }) {
-  const [formData, setFormData] = useState({ username: '', password: '' })
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+const FLOAT_EMOJIS = ['🥗', '🍎', '🥑', '🍊', '🥦', '🫐'];
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
-  }
+export default function LoginPage({ onLogin }) {
+  const [form, setForm] = useState({ username: '', password: '' });
+  const [showPw, setShowPw] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
+    e.preventDefault();
+    setError('');
+    setLoading(true);
     try {
-      const response = await api.post('/api/auth/login', formData)
-      onLogin(response.data)
+      const res = await api.post('/api/auth/login', form);
+      onLogin(res.data);
     } catch (err) {
-      setError('Invalid username or password')
-    } finally {
-      setLoading(false)
+      setError(err.response?.data?.message || 'Invalid credentials');
     }
-  }
+    setLoading(false);
+  };
 
   return (
     <div className="min-h-screen flex">
-      {/* Left — Gradient branding panel */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-brand-600 via-brand-700 to-purple-800">
-        {/* Decorative shapes */}
-        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-white/5" />
-        <div className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full bg-white/5" />
-        <div className="absolute top-1/4 right-1/3 w-40 h-40 rounded-full bg-purple-400/10" />
+      {/* ── Left Panel (gradient) ───────────────────── */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-brand-600 via-purple-600 to-brand-700">
+        {/* Floating food emojis */}
+        {FLOAT_EMOJIS.map((emoji, i) => (
+          <span
+            key={i}
+            className="auth-float"
+            style={{
+              top: `${10 + (i * 14) % 70}%`,
+              left: `${8 + (i * 18) % 80}%`,
+              animationDelay: `${i * -1.1}s`,
+              fontSize: `${1.6 + (i % 3) * 0.6}rem`,
+            }}
+          >
+            {emoji}
+          </span>
+        ))}
 
-        <div className="relative z-10 flex flex-col items-center justify-center w-full px-12">
+        {/* Content */}
+        <div className="relative z-10 flex flex-col justify-center px-16">
           <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.6 }}
-            className="w-20 h-20 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center text-4xl mb-8 shadow-2xl"
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
           >
-            🌿
-          </motion.div>
-          <motion.h1
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.15 }}
-            className="text-4xl font-extrabold text-white mb-3 tracking-tight"
-          >
-            DietSphere
-          </motion.h1>
-          <motion.p
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.25 }}
-            className="text-brand-200 text-center max-w-sm text-lg leading-relaxed"
-          >
-            Track every bite, understand your nutrition, and achieve your health goals with smart insights.
-          </motion.p>
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <span className="text-white text-lg font-black">DS</span>
+              </div>
+              <span className="text-2xl font-bold text-white">DietSphere</span>
+            </div>
+            <h2 className="text-4xl font-bold text-white leading-tight mb-4">
+              Track Your<br />
+              <span className="text-white/80">Nutrition Journey</span>
+            </h2>
+            <p className="text-white/60 text-sm max-w-sm leading-relaxed">
+              AI-powered nutrient tracking with 111+ Indian foods, smart analysis,
+              and personalized recommendations to achieve your health goals.
+            </p>
 
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="flex flex-wrap gap-3 mt-10 justify-center"
-          >
-            {['🍛 111+ Indian Foods', '📊 Real-time Analysis', '💡 Smart Recommendations', '🤖 AI-Powered'].map((f) => (
-              <span key={f} className="px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm text-white/80 text-sm font-medium border border-white/10">
-                {f}
-              </span>
-            ))}
+            <div className="mt-10 flex gap-6">
+              {[
+                { n: '111+', l: 'Indian Foods' },
+                { n: 'AI',   l: 'NutriBot' },
+                { n: '6+',   l: 'Chart Types' },
+              ].map((s) => (
+                <div key={s.l}>
+                  <p className="text-2xl font-bold text-white">{s.n}</p>
+                  <p className="text-xs text-white/50">{s.l}</p>
+                </div>
+              ))}
+            </div>
           </motion.div>
         </div>
+
+        {/* Decorative circles */}
+        <div className="absolute -top-32 -right-32 w-80 h-80 rounded-full bg-white/[0.06]" />
+        <div className="absolute -bottom-40 -left-20 w-96 h-96 rounded-full bg-white/[0.04]" />
       </div>
 
-      {/* Right — Login form */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12 bg-white dark:bg-slate-950">
+      {/* ── Right Panel (form) ──────────────────────── */}
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-12 bg-white dark:bg-slate-950">
         <motion.div
-          initial={{ opacity: 0, x: 30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
           className="w-full max-w-md"
         >
-          {/* Mobile logo */}
-          <div className="lg:hidden text-center mb-8">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center text-2xl mx-auto mb-3 shadow-lg shadow-brand-500/20">
-              🌿
+          {/* Mobile brand */}
+          <div className="lg:hidden flex items-center gap-3 mb-10">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-purple-500 flex items-center justify-center">
+              <span className="text-white text-sm font-black">DS</span>
             </div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">DietSphere</h1>
+            <span className="text-xl font-bold text-slate-900 dark:text-white">DietSphere</span>
           </div>
 
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Welcome back</h2>
-          <p className="text-slate-500 dark:text-slate-400 mb-8">Sign in to your account to continue</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Welcome back</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-8">
+            Sign in to continue tracking your nutrition
+          </p>
 
           {error && (
-            <div className="bg-red-50 text-red-700 px-4 py-3 rounded-xl mb-6 text-sm font-medium border border-red-200 flex items-center gap-2">
-              <span className="text-red-400">●</span> {error}
-            </div>
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-3.5 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200/50 dark:border-rose-500/20 text-rose-600 dark:text-rose-400 text-sm"
+            >
+              {error}
+            </motion.div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Username */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                <FiUser className="inline mr-1.5 -mt-0.5" size={14} />Username
-              </label>
-              <input
-                type="text"
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-                required
-                placeholder="Enter your username"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white bg-white dark:bg-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-sm"
-              />
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Username</label>
+              <div className="relative">
+                <FiMail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={form.username}
+                  onChange={(e) => setForm({ ...form, username: e.target.value })}
+                  className="input-glass pl-10"
+                  placeholder="Enter your username"
+                  required
+                />
+              </div>
             </div>
 
+            {/* Password */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                <FiLock className="inline mr-1.5 -mt-0.5" size={14} />Password
-              </label>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                required
-                placeholder="Enter your password"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white bg-white dark:bg-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-sm"
-              />
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Password</label>
+              <div className="relative">
+                <FiLock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type={showPw ? 'text' : 'password'}
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  className="input-glass pl-10 pr-10"
+                  placeholder="Enter your password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw(!showPw)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                >
+                  {showPw ? <FiEyeOff className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-6 rounded-xl bg-gradient-to-r from-brand-600 to-purple-600 text-white font-semibold text-sm hover:shadow-lg hover:shadow-brand-500/25 transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
+              className="btn-primary w-full py-3 text-sm"
             >
               {loading ? (
-                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
-                <>Sign In <FiArrowRight size={16} /></>
+                <>Sign In <FiArrowRight className="w-4 h-4" /></>
               )}
             </button>
-
-            <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-6">
-              Don&apos;t have an account?{' '}
-              <Link to="/register" className="text-brand-600 font-semibold hover:text-brand-700 transition-colors">
-                Create one
-              </Link>
-            </p>
           </form>
+
+          <p className="mt-8 text-center text-sm text-slate-500 dark:text-slate-400">
+            Don't have an account?{' '}
+            <Link to="/register" className="font-semibold text-brand-600 dark:text-brand-400 hover:underline">
+              Create one
+            </Link>
+          </p>
         </motion.div>
       </div>
     </div>
-  )
+  );
 }
-
-export default LoginPage

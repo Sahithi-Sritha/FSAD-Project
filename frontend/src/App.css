@@ -1,21 +1,115 @@
-/* ================================================================
-   App.css — Minimal custom styles (SVG ring, keyframes)
-   All layout & component styles use Tailwind utility classes
-   ================================================================ */
-
-/* Calorie ring SVG */
+/* ── Calorie Ring ────────────────────────────────────── */
 .calorie-ring-bg {
-  fill: none;
   stroke: #e2e8f0;
-  stroke-width: 10;
+}
+.dark .calorie-ring-bg {
+  stroke: #1e293b;
 }
 .calorie-ring-fill {
-  fill: none;
-  stroke-width: 10;
-  stroke-linecap: round;
+  stroke: url(#calorieGradient);
+  transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Spinner keyframe */
-@keyframes spin {
-  to { transform: rotate(360deg); }
+/* ── Animated mesh background ───────────────────────── */
+.mesh-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+.mesh-bg::before,
+.mesh-bg::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.35;
+  animation: float 10s ease-in-out infinite;
+}
+.mesh-bg::before {
+  width: 500px;
+  height: 500px;
+  top: -120px;
+  right: -60px;
+  background: radial-gradient(circle, #818cf8 0%, transparent 70%);
+}
+.mesh-bg::after {
+  width: 600px;
+  height: 600px;
+  bottom: -200px;
+  left: -100px;
+  background: radial-gradient(circle, #a78bfa 0%, transparent 70%);
+  animation-delay: -4s;
+}
+.dark .mesh-bg::before {
+  opacity: 0.12;
+}
+.dark .mesh-bg::after {
+  opacity: 0.08;
+}
+
+/* ── Auth page float items ──────────────────────────── */
+.auth-float {
+  position: absolute;
+  font-size: 2rem;
+  opacity: 0.25;
+  animation: float 6s ease-in-out infinite;
+  pointer-events: none;
+  user-select: none;
+}
+.auth-float:nth-child(2) { animation-delay: -1s; }
+.auth-float:nth-child(3) { animation-delay: -2s; }
+.auth-float:nth-child(4) { animation-delay: -3s; }
+.auth-float:nth-child(5) { animation-delay: -4s; }
+.auth-float:nth-child(6) { animation-delay: -5s; }
+
+/* ── Progress bar fill ──────────────────────────────── */
+.progress-fill {
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Typing dots ────────────────────────────────────── */
+.typing-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: typingBounce 1.4s ease-in-out infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typingBounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-8px); opacity: 1; }
+}
+
+/* ── Number counter shimmer ─────────────────────────── */
+.shimmer-text {
+  background: linear-gradient(90deg, currentColor 25%, #818cf8 50%, currentColor 75%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 2.5s ease-in-out infinite;
+}
+
+/* ── Chat message bubble ────────────────────────────── */
+.chat-bubble-user {
+  border-radius: 20px 20px 6px 20px;
+}
+.chat-bubble-ai {
+  border-radius: 20px 20px 20px 6px;
+}
+
+/* ── Tooltip ────────────────────────────────────────── */
+.tooltip-arrow::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  transform: translateX(-50%) rotate(45deg);
+  width: 8px;
+  height: 8px;
+  background: inherit;
 }
